@@ -5,37 +5,51 @@
 <div class="midi-player">
   <p>Click to play Son Clave (3-2)</p>
   <button id="play-clave">Play</button>
+  <button id="loop-clave">Loop</button>
+  <button id="stop-clave">Stop</button>
 </div>
 
 <script>
-  import Writer from 'midi-writer-js';
-  
-  // Your Web Audio / MIDI logic goes here
-  function playClave() {
-    console.log('Playing Clave!');
-    // 1. Create your MIDI data
-    const track = new Writer.Track();
-    track.addEvent([
-      new Writer.NoteEvent({ pitch: ['C4'], duration: '8' }), // 1
-      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '16' }), // 1a
-      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '8t' }), // 2& (approx)
-      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '8' }), // 3&
-      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '4' }), // 4
-    ]);
-    
-    const write = new Writer.Writer([track]);
-    const midiDataUri = write.dataUri();
-    
-    // 2. Play it with Web Audio (or any other method)
-    // This is just a simple example; you'd use a real synth
-    const audio = new Audio(midiDataUri);
-    audio.play();
+  import { SynthEngine } from '../lib/SynthEngine';
 
-    // You would probably use Web Audio API here to load a
-    // synth sound and play the notes from the track object.
+  const synth = new SynthEngine();
+  let loopInterval: number | undefined;
+
+  const clavePattern = [
+    { note: 60, duration: 0.125, wait: 0.25 },    // 1
+    { note: 60, duration: 0.125, wait: 0.375 },   // 1a
+    { note: 60, duration: 0.125, wait: 0.5 },     // 2&
+    { note: 60, duration: 0.125, wait: 0.75 },    // 3&
+    { note: 60, duration: 0.125, wait: 1.25 },    // 4
+  ];
+
+  async function playClave() {
+    await synth.ensureContextResumed();
+    console.log('Playing Clave!');
+
+    clavePattern.forEach(noteEvent => {
+      setTimeout(() => {
+        synth.playChord([noteEvent.note], noteEvent.duration);
+      }, noteEvent.wait * 1000); // Convert to ms
+    });
+  }
+
+  function startLoop() {
+    if (loopInterval) return;
+    playClave(); // Play immediately
+    loopInterval = setInterval(playClave, 2000);
+  }
+
+  function stopLoop() {
+    if (loopInterval) {
+      clearInterval(loopInterval);
+      loopInterval = undefined;
+    }
   }
 
   document.getElementById('play-clave')?.addEventListener('click', playClave);
+  document.getElementById('loop-clave')?.addEventListener('click', startLoop);
+  document.getElementById('stop-clave')?.addEventListener('click', stopLoop);
 </script>
 
 <style>

@@ -1,0 +1,66 @@
+---
+// src/components/PolymeterPlayer.astro
+---
+
+<div class="bg-gray-100 border border-gray-300 p-4 rounded-lg">
+  <p class="text-lg mb-4">Click to play a 3 against 4 polymeter</p>
+  <div class="flex space-x-2">
+    <button id="play-polymeter" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Play</button>
+    <button id="loop-polymeter" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Loop</button>
+    <button id="stop-polymeter" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Stop</button>
+  </div>
+</div>
+
+<script>
+  import { SynthEngine } from '../lib/SynthEngine';
+
+  const synth = new SynthEngine();
+  let loopInterval: number | undefined;
+
+  const pattern4 = [
+    { note: 72, duration: 0.05, wait: 0 },    // C5
+    { note: 72, duration: 0.05, wait: 1 },
+    { note: 72, duration: 0.05, wait: 2 },
+    { note: 72, duration: 0.05, wait: 3 },
+  ];
+
+  const pattern3 = [
+    { note: 67, duration: 0.05, wait: 0 },    // G4
+    { note: 67, duration: 0.05, wait: 4/3 },
+    { note: 67, duration: 0.05, wait: 8/3 },
+  ];
+
+  async function playPolymeter() {
+    await synth.ensureContextResumed();
+    console.log('Playing Polymeter!');
+
+    pattern4.forEach(noteEvent => {
+      setTimeout(() => {
+        synth.playChord([noteEvent.note], noteEvent.duration);
+      }, noteEvent.wait * 1000); // Convert to ms
+    });
+
+    pattern3.forEach(noteEvent => {
+      setTimeout(() => {
+        synth.playChord([noteEvent.note], noteEvent.duration);
+      }, noteEvent.wait * 1000); // Convert to ms
+    });
+  }
+
+  function startLoop() {
+    if (loopInterval) return;
+    playPolymeter(); // Play immediately
+    loopInterval = setInterval(playPolymeter, 4000);
+  }
+
+  function stopLoop() {
+    if (loopInterval) {
+      clearInterval(loopInterval);
+      loopInterval = undefined;
+    }
+  }
+
+  document.getElementById('play-polymeter')?.addEventListener('click', playPolymeter);
+  document.getElementById('loop-polymeter')?.addEventListener('click', startLoop);
+  document.getElementById('stop-polymeter')?.addEventListener('click', stopLoop);
+</script>
