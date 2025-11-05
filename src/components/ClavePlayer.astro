@@ -1,0 +1,48 @@
+---
+// src/components/ClavePlayer.astro
+---
+
+<div class="midi-player">
+  <p>Click to play Son Clave (3-2)</p>
+  <button id="play-clave">Play</button>
+</div>
+
+<script>
+  import Writer from 'midi-writer-js';
+  
+  // Your Web Audio / MIDI logic goes here
+  function playClave() {
+    console.log('Playing Clave!');
+    // 1. Create your MIDI data
+    const track = new Writer.Track();
+    track.addEvent([
+      new Writer.NoteEvent({ pitch: ['C4'], duration: '8' }), // 1
+      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '16' }), // 1a
+      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '8t' }), // 2& (approx)
+      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '8' }), // 3&
+      new Writer.NoteEvent({ pitch: ['C4'], duration: '8', wait: '4' }), // 4
+    ]);
+    
+    const write = new Writer.Writer([track]);
+    const midiDataUri = write.dataUri();
+    
+    // 2. Play it with Web Audio (or any other method)
+    // This is just a simple example; you'd use a real synth
+    const audio = new Audio(midiDataUri);
+    audio.play();
+
+    // You would probably use Web Audio API here to load a
+    // synth sound and play the notes from the track object.
+  }
+
+  document.getElementById('play-clave')?.addEventListener('click', playClave);
+</script>
+
+<style>
+  .midi-player {
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 8px;
+  }
+</style>

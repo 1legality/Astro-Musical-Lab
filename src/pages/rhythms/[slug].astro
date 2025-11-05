@@ -1,0 +1,20 @@
+---
+// src/pages/rhythms/[slug].astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import MainLayout from '../../layouts/MainLayout.astro';
+
+// This function tells Astro which pages to build
+export async function getStaticPaths() {
+  const rhythmEntries = await getCollection('rhythms');
+  return rhythmEntries.map((rhythm: CollectionEntry<'rhythms'>) => ({
+    params: { slug: rhythm.slug },
+    props: { entry: rhythm },
+  }));
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'rhythms'> };
+const { Content } = await entry.render(); // This gets the HTML from your Markdown
+---
+<MainLayout title={entry.data.title}>
+  <Content />
+</MainLayout>

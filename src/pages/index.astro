@@ -1,11 +1,22 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+// src/pages/index.astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+import MainLayout from '../layouts/MainLayout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// Get all rhythms and sort them
+const allRhythms = (await getCollection('rhythms'))
+  .sort((a: CollectionEntry<'rhythms'>, b: CollectionEntry<'rhythms'>) => a.data.order - b.data.order);
 ---
-
-<Layout>
-	<Welcome />
-</Layout>
+<MainLayout title="Rhythm Encyclopedia">
+  <p>Welcome! Select a rhythm type to learn more.</p>
+  <ul>
+    {allRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
+      <li>
+        <a href={`/rhythms/${rhythm.slug}`}>
+          <strong>{rhythm.data.title}</strong>
+        </a>
+        <p>{rhythm.data.description}</p>
+      </li>
+    ))}
+  </ul>
+</MainLayout>

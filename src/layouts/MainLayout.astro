@@ -1,0 +1,36 @@
+---
+// src/layouts/MainLayout.astro
+import { getCollection, type CollectionEntry } from 'astro:content';
+
+// Get all rhythms and sort them by the 'order' prop
+const allRhythms = (await getCollection('rhythms'))
+  .sort((a: CollectionEntry<'rhythms'>, b: CollectionEntry<'rhythms'>) => a.data.order - b.data.order);
+
+const { title } = Astro.props;
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>{title} | Rhythm Guide</title>
+  <style>
+    /* Add your global styles here */
+    body { font-family: sans-serif; margin: 0; }
+    nav { background: #111; padding: 1rem; }
+    nav a { color: white; text-decoration: none; margin-right: 1rem; }
+    main { max-width: 80ch; margin: 2rem auto; padding: 0 1rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    {allRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
+      <a href={`/rhythms/${rhythm.slug}`}>{rhythm.data.title}</a>
+    ))}
+  </nav>
+  <main>
+    <h1>{title}</h1>
+    <slot />
+  </main>
+</body>
+</html>
