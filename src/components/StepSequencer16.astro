@@ -76,9 +76,9 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
     const dur = cfg.duration ?? 0.06;
 
     const synth = new SynthEngine();
-    let loopTimer: number | undefined, stepTimeouts: number[] = [];
+    let loopTimer, stepTimeouts = [];
 
-    function msPerStep(bpm: number) {
+    function msPerStep(bpm) {
       return (60000 / bpm) / 4; // 16th note @ BPM
     }
 
