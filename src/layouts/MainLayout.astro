@@ -52,10 +52,10 @@ const { title } = Astro.props;
       const uid = container.id;
       const action = actionButton.dataset.action;
 
-      const dataEl = container.querySelector(`#${uid}-data`);
-      if (!dataEl) return;
+      const configAttr = container.dataset.config;
+      if (!configAttr) return;
 
-      const cfg = JSON.parse(dataEl.textContent || '{}');
+      const cfg = JSON.parse(configAttr || '{}');
       const { primary0: stepsA = [], secondary0: stepsB = [], note: noteA = 60, secondaryNote: noteB = 67, bpm: bpmVal = 120, duration: dur = 0.06 } = cfg;
 
       const msPerStep = (60000 / bpmVal) / 4;
