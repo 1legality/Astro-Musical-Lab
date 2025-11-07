@@ -19,8 +19,8 @@ const primary0 = Array.from(new Set(steps)).map(n => Number(n) - 1).filter(n => 
 const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).filter(n => n>=0 && n<16);
 ---
 
-<div id={uid} class="w-full bg-white/70 rounded-lg border border-gray-200 p-4 shadow-sm" data-config={JSON.stringify({ primary0, secondary0, note, secondaryNote, bpm, duration })}>
-  {title && <h3 class="text-sm font-semibold text-gray-800 mb-3">{title}</h3>}
+<div id={uid} class="w-full bg-zinc-800/50 rounded-lg border border-zinc-700 p-4 shadow-sm" data-config={JSON.stringify({ primary0, secondary0, note, secondaryNote, bpm, duration })}>
+  {title && <h3 class="text-sm font-semibold text-zinc-200 mb-3">{title}</h3>}
 
   <div class="">
     <div class="relative mb-3">
@@ -30,7 +30,7 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
           const isB = secondary0.includes(i);
           const both = isA && isB;
           return (
-            <div class={`relative flex items-center justify-center w-full aspect-square select-none rounded-sm border ${both ? 'bg-purple-500/80 border-purple-600 text-white' : isA ? 'bg-blue-500/80 border-blue-600 text-white' : isB ? 'bg-emerald-500/80 border-emerald-600 text-white' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+            <div class={`relative flex items-center justify-center w-full aspect-square select-none rounded-sm border ${both ? 'bg-fuchsia-500/80 border-fuchsia-400 text-white' : isA ? 'bg-sky-500/80 border-sky-400 text-white' : isB ? 'bg-amber-500/80 border-amber-400 text-white' : 'bg-zinc-700/50 border-zinc-600/80 text-zinc-400'}`}>
               <span class="text-[10px] leading-none">{i + 1}</span>
             </div>
           );
@@ -39,9 +39,9 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
 
       {/* visual group separators at 25%, 50%, 75% without affecting cell widths */}
       <div class="pointer-events-none absolute inset-0">
-        <div class="absolute top-0 bottom-0 w-px bg-gray-300/70" style="left: 25%"></div>
-        <div class="absolute top-0 bottom-0 w-px bg-gray-300/70" style="left: 50%"></div>
-        <div class="absolute top-0 bottom-0 w-px bg-gray-300/70" style="left: 75%"></div>
+        <div class="absolute top-0 bottom-0 w-px bg-zinc-600/70" style="left: 25%"></div>
+        <div class="absolute top-0 bottom-0 w-px bg-zinc-600/70" style="left: 50%"></div>
+        <div class="absolute top-0 bottom-0 w-px bg-zinc-600/70" style="left: 75%"></div>
       </div>
     </div>
   </div>
@@ -50,7 +50,7 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
     <button data-action="play" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded">Play</button>
     <button data-action="loop" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-1 px-3 rounded">Loop</button>
     <button data-action="stop" class="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded">Stop</button>
-    <div class="ml-3 text-xs text-gray-600">{bpm} BPM • 16th = {(60 / bpm / 4).toFixed(3)}s</div>
+    <div class="ml-3 text-xs text-zinc-400">{bpm} BPM • 16th = {(60 / bpm / 4).toFixed(3)}s</div>
   </div>
 </div>
 
