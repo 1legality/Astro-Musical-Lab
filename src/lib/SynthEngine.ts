@@ -11,63 +11,68 @@ export interface ActiveNote {
 /**
  * A simple synthesizer class using the Web Audio API to play chords
  * with two detuned sawtooth oscillators per note for a basic analog synth vibe.
+ * The AudioContext is initialized lazily on the first user gesture.
  */
 export class SynthEngine {
     public audioContext: AudioContext | null = null;
     private mainGainNode: GainNode | null = null;
-    private activeNotes: Set<ActiveNote> = new Set(); // Tracks currently playing/scheduled notes
+    private activeNotes: Set<ActiveNote> = new Set();
+    private initialVolume: number;
+
+    constructor(initialVolume: number = 0.5) {
+        this.initialVolume = Math.max(0, Math.min(1, initialVolume));
+    }
 
     /**
-     * Initializes the SynthEngine.
-     * @param initialVolume - The initial master volume (0.0 to 1.0).
+     * Initializes the AudioContext if it hasn't been created yet.
+     * This should be called from any method that needs the audio context.
+     * @returns true if the context is ready, false otherwise.
      */
-    constructor(initialVolume: number = 0.5) {
+    private initAudioContext(): boolean {
+        if (this.audioContext) {
+            return true;
+        }
+        // Avoid errors during server-side rendering
+        if (typeof window === 'undefined') {
+            return false;
+        }
         try {
-            // Create the audio context and main gain node
             this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             this.mainGainNode = this.audioContext.createGain();
-            // Clamp initial volume
-            const clampedVolume = Math.max(0, Math.min(1, initialVolume));
-            this.mainGainNode.gain.setValueAtTime(clampedVolume, this.audioContext.currentTime);
+            this.mainGainNode.gain.setValueAtTime(this.initialVolume, this.audioContext.currentTime);
             this.mainGainNode.connect(this.audioContext.destination);
+            console.log("AudioContext initialized successfully.");
+            return true;
         } catch (e) {
             console.error("Web Audio API is not supported or could not be initialized.", e);
-            // Handle the error appropriately in a real app (e.g., disable audio features)
+            return false;
         }
     }
 
     /**
-     * Resumes the AudioContext if it's in a suspended state.
-     * This MUST be called in response to a user gesture (e.g., button click).
+     * Creates or resumes the AudioContext in response to a user gesture.
      */
-    public ensureContextResumed(): Promise<void> {
-        if (this.audioContext && this.audioContext.state === 'suspended') {
+    public async ensureContextResumed(): Promise<void> {
+        if (!this.initAudioContext()) {
+            return;
+        }
+        if (this.audioContext!.state === 'suspended') {
             console.log("Resuming AudioContext...");
-            return this.audioContext.resume().then(() => {
+            try {
+                await this.audioContext!.resume();
                 console.log("AudioContext resumed successfully.");
-            }).catch(e => console.error("Error resuming AudioContext:", e));
+            } catch (e) {
+                console.error("Error resuming AudioContext:", e);
+            }
         }
-        return Promise.resolve(); // Context already running or not available
     }
 
-    /**
-     * Converts a MIDI note number to its corresponding frequency in Hertz.
-     * @param midiNote - The MIDI note number (e.g., 60 for Middle C).
-     * @returns The frequency in Hz.
-     */
     private midiNoteToFrequency(midiNote: number): number {
-        // Standard formula: A4 = 440Hz = MIDI note 69
         return 440 * Math.pow(2, (midiNote - 69) / 12);
     }
 
-    /**
-     * Plays a chord consisting of multiple MIDI notes.
-     * @param midiNotes - An array of MIDI note numbers for the chord.
-     * @param durationSeconds - How long the chord should play in seconds.
-     */
     public playChord(midiNotes: number[], durationSeconds: number = 0.05): void {
-        if (!this.audioContext || !this.mainGainNode) {
-            console.error("AudioContext not available. Cannot play chord.");
+        if (!this.initAudioContext() || !this.audioContext || !this.mainGainNode) {
             return;
         }
 
@@ -75,52 +80,39 @@ export class SynthEngine {
 
         midiNotes.forEach(note => {
             const baseFrequency = this.midiNoteToFrequency(note);
-
-            // --- Oscillator ---
             const osc = this.audioContext!.createOscillator();
             osc.type = 'square';
-            // Pitch envelope for the "beep" sound
             osc.frequency.setValueAtTime(baseFrequency * 4, now);
             osc.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.05);
 
-            // --- Gain Node per Note (for envelope) ---
             const noteGain = this.audioContext!.createGain();
             noteGain.gain.setValueAtTime(1.0, now);
             noteGain.gain.exponentialRampToValueAtTime(0.001, now + durationSeconds);
 
-            // --- Connections ---
             osc.connect(noteGain);
-            noteGain.connect(this.mainGainNode!); // Connect note's gain to master gain
+            noteGain.connect(this.mainGainNode!);
 
-            // --- Tracking and Cleanup ---
             const stopTime = now + durationSeconds;
             const activeNote: ActiveNote = { midiNote: note, velocity: 1.0, duration: durationSeconds, oscillators: [osc], noteGain, stopTime };
             this.activeNotes.add(activeNote);
 
-            // Use 'onended' event for reliable cleanup after natural stop or manual stop
             osc.onended = () => {
                 if (this.activeNotes.has(activeNote)) {
                     try {
                         osc.disconnect();
                         noteGain.disconnect();
-                    } catch (e) { /* Ignore errors if already disconnected */ }
+                    } catch (e) { /* Ignore */ }
                     this.activeNotes.delete(activeNote);
                 }
             };
 
-            // --- Start and Stop Scheduling ---
             osc.start(now);
-            osc.stop(stopTime); // Schedule oscillator hardware stop
+            osc.stop(stopTime);
         });
     }
 
-    /**
-     * Starts playing a chord indefinitely until stopped manually.
-     * @param midiNotes - An array of MIDI note numbers for the chord.
-     */
     public startChord(midiNotes: number[]): ActiveNote[] {
-        if (!this.audioContext || !this.mainGainNode) {
-            console.error("AudioContext not available. Cannot play chord.");
+        if (!this.initAudioContext() || !this.audioContext || !this.mainGainNode) {
             return [];
         }
 
@@ -129,7 +121,6 @@ export class SynthEngine {
 
         midiNotes.forEach(note => {
             const baseFrequency = this.midiNoteToFrequency(note);
-
             const osc = this.audioContext!.createOscillator();
             osc.type = 'square';
             osc.frequency.setValueAtTime(baseFrequency * 4, now);
@@ -152,132 +143,85 @@ export class SynthEngine {
         return activeNotes;
     }
 
-    /**
-     * Stops specific active notes or all notes if none are specified.
-     * @param notesToStop - An array of ActiveNote objects to stop. Stops all if not provided.
-     */
     public stopNotes(notesToStop?: ActiveNote[]): void {
-        if (!this.audioContext || this.activeNotes.size === 0) {
-            return; // Nothing to stop or context not ready
+        if (!this.initAudioContext() || !this.audioContext || this.activeNotes.size === 0) {
+            return;
         }
 
         const now = this.audioContext.currentTime;
-        const fadeOutDuration = 0.05; // Very short fade to prevent clicks
-
+        const fadeOutDuration = 0.05;
         const notes = notesToStop || Array.from(this.activeNotes);
 
         notes.forEach(activeNote => {
-            // --- Immediate Gain Fade-out ---
             activeNote.noteGain.gain.cancelScheduledValues(now);
-            activeNote.noteGain.gain.setValueAtTime(activeNote.noteGain.gain.value, now); // Pin current value
+            activeNote.noteGain.gain.setValueAtTime(activeNote.noteGain.gain.value, now);
             activeNote.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + fadeOutDuration);
 
-            // --- Stop Oscillators ---
             const manualStopTime = now + fadeOutDuration + 0.01;
             activeNote.oscillators.forEach(osc => {
                 try {
                     osc.stop(manualStopTime);
-                } catch (e) {
-                    // Ignore errors if oscillator is already stopped or in invalid state
-                }
+                } catch (e) { /* Ignore */ }
             });
 
-            // Cleanup
             setTimeout(() => {
                 if (this.activeNotes.has(activeNote)) {
                     try {
                         activeNote.oscillators.forEach(osc => osc.disconnect());
                         activeNote.noteGain.disconnect();
-                    } catch (e) {}
+                    } catch (e) { /* Ignore */ }
                     this.activeNotes.delete(activeNote);
                 }
-            }, fadeOutDuration * 1000 + 10); // Small delay for safety
+            }, fadeOutDuration * 1000 + 50);
         });
     }
 
-    /**
-     * Immediately stops all currently playing or scheduled sounds managed by this player.
-     * Applies a very short fade-out to prevent clicks.
-     */
     public stopAll(): void {
-        if (!this.audioContext || this.activeNotes.size === 0) {
-            return; // Nothing to stop or context not ready
+        if (!this.initAudioContext() || !this.audioContext || this.activeNotes.size === 0) {
+            return;
         }
 
         const now = this.audioContext.currentTime;
-        const fadeOutDuration = 0.05; // Very short fade to prevent clicks
-
-        console.log(`Stopping ${this.activeNotes.size} active notes...`);
+        const fadeOutDuration = 0.05;
 
         this.activeNotes.forEach(activeNote => {
-            // Check if the note's natural stop time is already past
-            // (might happen with overlapping calls or timing issues)
             if (now < activeNote.stopTime) {
-                 // --- Immediate Gain Fade-out ---
-                // Cancel any previously scheduled gain changes
                 activeNote.noteGain.gain.cancelScheduledValues(now);
-                // Set gain to current value and ramp down quickly
-                // Use linearRamp for faster cutoff if preferred:
-                // activeNote.noteGain.gain.linearRampToValueAtTime(0.0001, now + fadeOutDuration);
-                activeNote.noteGain.gain.setValueAtTime(activeNote.noteGain.gain.value, now); // Pin current value
+                activeNote.noteGain.gain.setValueAtTime(activeNote.noteGain.gain.value, now);
                 activeNote.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + fadeOutDuration);
 
-                // --- Stop Oscillators ---
-                // Schedule stop slightly after the gain ramp finishes
                 const manualStopTime = now + fadeOutDuration + 0.01;
                 activeNote.oscillators.forEach(osc => {
                     try {
-                        // Cancel the original stop time
                         osc.stop(manualStopTime);
-                    } catch (e) {
-                        // Ignore errors if oscillator is already stopped or in invalid state
-                        // console.warn("Error stopping oscillator:", e);
-                    }
+                    } catch (e) { /* Ignore */ }
                 });
-            } else {
-                 // If natural stop time is past, ensure cleanup happens anyway
-                 // The onended event should handle this, but as a fallback:
-                 setTimeout(() => {
-                     if (this.activeNotes.has(activeNote)) {
-                        try {
-                            activeNote.oscillators.forEach(osc => osc.disconnect());
-                            activeNote.noteGain.disconnect();
-                        } catch(e) {}
-                        this.activeNotes.delete(activeNote);
-                     }
-                 }, 50); // Small delay for safety
             }
         });
-
-        // Clear the tracking set immediately. The 'onended' callbacks will handle
-        // the actual disconnection and final cleanup.
-        // Note: If onended proves unreliable after manual stop, explicit disconnection
-        // might be needed here, but onended is generally preferred.
-        this.activeNotes.clear();
-        console.log("Stop command issued for all active notes.");
+        // The onended event will handle cleanup. For reliability, we can also force it.
+        setTimeout(() => {
+            this.activeNotes.forEach(note => {
+                 try {
+                    note.oscillators.forEach(osc => osc.disconnect());
+                    note.noteGain.disconnect();
+                } catch(e) { /* Ignore */ }
+            });
+            this.activeNotes.clear();
+        }, fadeOutDuration * 1000 + 50);
     }
 
-    /**
-     * Sets the master volume.
-     * @param volume - The desired volume level (0.0 to 1.0).
-     */
     public setVolume(volume: number): void {
-        if (this.mainGainNode && this.audioContext) {
-            const clampedVolume = Math.max(0, Math.min(1, volume));
-            // Use setTargetAtTime for slightly smoother volume changes if desired
-            // this.mainGainNode.gain.setTargetAtTime(clampedVolume, this.audioContext.currentTime, 0.01);
-            this.mainGainNode.gain.setValueAtTime(clampedVolume, this.audioContext.currentTime);
+        if (!this.initAudioContext() || !this.mainGainNode) {
+            return;
         }
+        const clampedVolume = Math.max(0, Math.min(1, volume));
+        this.mainGainNode.gain.setValueAtTime(clampedVolume, this.audioContext!.currentTime);
     }
 
-     /**
-     * Gets the current master volume.
-     * @returns The current volume level (0.0 to 1.0).
-     */
     public getVolume(): number {
-        if (this.mainGainNode) {
-            return this.mainGainNode.gain.value;
+        if (!this.initAudioContext() || !this.mainGainNode) {
+            return this.initialVolume;
         }
-        return 0;
+        return this.mainGainNode.gain.value;
     }
 }

@@ -28,7 +28,7 @@
     console.log('Playing Clave!');
 
     clavePattern.forEach(noteEvent => {
-      setTimeout(() => {
+      window.setTimeout(() => {
         synth.playChord([noteEvent.note], noteEvent.duration);
       }, noteEvent.wait * 1000); // Convert to ms
     });
@@ -37,12 +37,12 @@
   function startLoop() {
     if (loopInterval) return;
     playClave(); // Play immediately
-    loopInterval = setInterval(playClave, 2000);
+    loopInterval = window.setInterval(playClave, 2000);
   }
 
   function stopLoop() {
     if (loopInterval) {
-      clearInterval(loopInterval);
+      window.clearInterval(loopInterval);
       loopInterval = undefined;
     }
   }

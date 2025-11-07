@@ -57,16 +57,16 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
     {JSON.stringify({ primary0, secondary0, note, secondaryNote, bpm, duration })}
   </script>
 
-  <script>
+  <script define:vars={{ uid }}>
     import { SynthEngine } from '../lib/SynthEngine';
 
-    const container = document.getElementById("{uid}");
+    const container = document.getElementById(uid);
     const playBtn = container?.querySelector('[data-action="play"]');
     const loopBtn = container?.querySelector('[data-action="loop"]');
     const stopBtn = container?.querySelector('[data-action="stop"]');
 
     // Props mirrored into script scope via embedded JSON
-    const dataEl = document.getElementById("{uid}-data");
+    const dataEl = document.getElementById(`${uid}-data`);
     const cfg = JSON.parse((dataEl && dataEl.textContent) || '{}');
     const stepsA = cfg.primary0 || [];
     const stepsB = cfg.secondary0 || [];
@@ -76,9 +76,9 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
     const dur = cfg.duration ?? 0.06;
 
     const synth = new SynthEngine();
-    let loopTimer;
+    let loopTimer: number | undefined, stepTimeouts: number[] = [];
 
-    function msPerStep(bpm) {
+    function msPerStep(bpm: number) {
       return (60000 / bpm) / 4; // 16th note @ BPM
     }
 
@@ -87,15 +87,20 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
       const stepMs = msPerStep(bpmVal);
       const now = performance.now();
 
+      stepTimeouts.forEach(window.clearTimeout);
+      stepTimeouts = [];
+
       for (let i = 0; i < 16; i++) {
         const t = now + i * stepMs;
         const doA = stepsA.includes(i);
         const doB = stepsB.includes(i);
         if (doA) {
-          setTimeout(() => synth.playChord([noteA], dur), Math.max(0, t - performance.now()));
+          const timeoutId = window.setTimeout(() => synth.playChord([noteA], dur), Math.max(0, t - performance.now()));
+          stepTimeouts.push(timeoutId);
         }
         if (doB) {
-          setTimeout(() => synth.playChord([noteB], dur), Math.max(0, t - performance.now()));
+          const timeoutId = window.setTimeout(() => synth.playChord([noteB], dur), Math.max(0, t - performance.now()));
+          stepTimeouts.push(timeoutId);
         }
       }
     }
@@ -109,14 +114,17 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
 
     function stopLoop() {
       if (loopTimer) {
-        clearInterval(loopTimer);
+        window.clearInterval(loopTimer);
         loopTimer = undefined;
       }
+      stepTimeouts.forEach(window.clearTimeout);
+      stepTimeouts = [];
+      synth.stopAll();
     }
 
-    playBtn && playBtn.addEventListener('click', playOnce);
-    loopBtn && loopBtn.addEventListener('click', startLoop);
-    stopBtn && stopBtn.addEventListener('click', stopLoop);
+    playBtn?.addEventListener('click', playOnce);
+    loopBtn?.addEventListener('click', startLoop);
+    stopBtn?.addEventListener('click', stopLoop);
   </script>
 </div>
 
