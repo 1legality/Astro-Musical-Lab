@@ -1,1 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional small tweaks for better defaults */
+@layer base {
+  html { scroll-behavior: smooth; }
+}

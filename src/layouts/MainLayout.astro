@@ -1,6 +1,7 @@
 ---
 // src/layouts/MainLayout.astro
 import { getCollection, type CollectionEntry } from 'astro:content';
+import '../styles/global.css';
 
 // Get all rhythms and sort them by the 'order' prop
 const allRhythms = (await getCollection('rhythms'))
@@ -13,24 +14,26 @@ const { title } = Astro.props;
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width" />
   <title>{title} | Rhythm Guide</title>
-  <style>
-    /* Add your global styles here */
-    body { font-family: sans-serif; margin: 0; }
-    nav { background: #111; padding: 1rem; }
-    nav a { color: white; text-decoration: none; margin-right: 1rem; }
-    main { max-width: 80ch; margin: 2rem auto; padding: 0 1rem; }
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="/favicon.svg" />
+  <style is:global>
+    :root { --bg: #0b0b0b; --fg: #eaeaea; --muted: #9aa0a6; }
+    @media (prefers-color-scheme: light) { :root { --bg: #ffffff; --fg: #111111; --muted: #6b7280; } }
+    body { background: var(--bg); color: var(--fg); }
   </style>
 </head>
-<body>
-  <nav>
-    <a href="/">Home</a>
+<body class="min-h-screen antialiased">
+  <nav class="bg-black/80 text-white sticky top-0 z-10 backdrop-blur px-4 py-3">
+    <a class="font-semibold mr-4 hover:underline" href="/">Home</a>
     {allRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
-      <a href={`/rhythms/${rhythm.slug}`}>{rhythm.data.title}</a>
+      <a class="mr-3 hover:underline" href={`/rhythms/${rhythm.slug}`}>{rhythm.data.title}</a>
     ))}
   </nav>
-  <main>
-    <h1>{title}</h1>
-    <slot />
+  <main class="mx-auto max-w-3xl px-4 py-8">
+    <h1 class="text-3xl font-bold tracking-tight mb-6">{title}</h1>
+    <article class="prose prose-invert prose-headings:scroll-mt-24">
+      <slot />
+    </article>
   </main>
 </body>
 </html>
