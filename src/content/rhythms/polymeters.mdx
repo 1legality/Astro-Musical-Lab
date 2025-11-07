@@ -1,12 +1,39 @@
 ---
-title: "2. Polymeters"
-description: "Layering contrasting rhythmic cycles."
-order: 2
+title: "3. Polymeters"
+description: "Different meters running in parallel."
+order: 3
 ---
 import PolymeterPlayer from '../../components/PolymeterPlayer.astro';
+import StepSequencer16 from '../../components/StepSequencer16.astro';
 
-A polymeter is the simultaneous use of two or more different time signatures. While polyrhythm layers rhythms with different subdivisions within the same time signature, a polymeter layers entire meters. For example, one part of the music could be in 4/4 time while another is in 3/4 time.
+A polymeter runs two or more different meters at once (e.g., 4/4 against 5/4). Unlike polyrhythm (different subdivisions inside the same bar), polymeter uses different loop lengths, so parts realign only after a number of beats equal to the least common multiple of the meters.
 
-This creates a fascinating rhythmic tension as the downbeats of the different meters only align periodically. The example below demonstrates a 3 against 4 polymeter. One voice plays a pattern of 4 beats, while the other plays a pattern of 3 beats. The two patterns start together, and then cycle, realigning on the downbeat every 12 beats (the least common multiple of 3 and 4).
+Core idea
+- Each part has its own bar length (e.g., 4 vs 5). They share the same tempo but cycle over different spans.
+- The composite groove evolves every bar; full alignment happens at the LCM (e.g., 4/4 vs 5/4 realigns every 20 beats).
+
+Programming approach
+- Set independent clip/loop lengths (e.g., 16 steps vs 20 steps) and start them together.
+- Use distinct accent maps per meter so each part “speaks” its own meter clearly.
+- Keep an anchor (steady kick or drone) to make the shifting emphasis feel intentional.
+
+Musical effect
+- Subtle long‑form evolution ideal for ambient/techno.
+- A sense of drifting phase without changing tempo or using different BPMs.
+- Great with Euclidean or clave‑inspired lines riding against a fixed 4/4 backbone.
 
 <PolymeterPlayer />
+
+Examples (16‑step)
+
+- Overlay of 4‑step and 5‑step loop starts across 16 steps:
+  - 4‑step cycle starts: 1,5,9,13
+  - 5‑step cycle starts: 1,6,11,16
+  <StepSequencer16
+    title="Polymeter Overlay • 4 vs 5"
+    steps={[1,5,9,13]}
+    secondarySteps={[1,6,11,16]}
+    note={72}
+    secondaryNote={67}
+    bpm={120}
+  />

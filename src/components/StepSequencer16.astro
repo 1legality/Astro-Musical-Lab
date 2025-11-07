@@ -1,0 +1,120 @@
+---
+// Reusable 16‑step sequencer (visual + simple playback)
+// Tailwind for layout; integrates with SynthEngine for beep playback
+const {
+  title = undefined,
+  steps = [],              // primary active steps (1-based indices)
+  secondarySteps = [],     // optional secondary layer (1-based indices)
+  note = 60,               // primary MIDI note
+  secondaryNote = 67,      // secondary MIDI note
+  bpm = 120,               // tempo
+  duration = 0.06          // seconds per triggered note
+} = Astro.props;
+
+// Generate a stable unique id per component instance
+const uid = `seq16_${Math.random().toString(36).slice(2)}`;
+
+// Normalize to 0-based for rendering logic in script
+const primary0 = Array.from(new Set(steps)).map(n => Number(n) - 1).filter(n => n>=0 && n<16);
+const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).filter(n => n>=0 && n<16);
+---
+
+<div id={uid} class="w-full bg-white/70 rounded-lg border border-gray-200 p-4 shadow-sm">
+  {title && <h3 class="text-sm font-semibold text-gray-800 mb-3">{title}</h3>}
+
+  <div class="grid grid-cols-16 gap-1 mb-3">
+    {Array.from({ length: 16 }).map((_, i) => {
+      const isA = primary0.includes(i);
+      const isB = secondary0.includes(i);
+      const both = isA && isB;
+      // Grouping separators every 4 steps
+      const groupRight = ((i + 1) % 4 === 0) && i !== 15;
+      return (
+        <div class={`relative flex items-center justify-center h-8 select-none rounded-sm border ${both ? 'bg-purple-500/80 border-purple-600 text-white' : isA ? 'bg-blue-500/80 border-blue-600 text-white' : isB ? 'bg-emerald-500/80 border-emerald-600 text-white' : 'bg-gray-100 border-gray-200 text-gray-500'} ${groupRight ? 'mr-2' : ''}`}>
+          <span class="text-[10px] leading-none">{i + 1}</span>
+        </div>
+      );
+    })}
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button data-action="play" class="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded">Play</button>
+    <button data-action="loop" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-1 px-3 rounded">Loop</button>
+    <button data-action="stop" class="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded">Stop</button>
+    <div class="ml-3 text-xs text-gray-600">{bpm} BPM • 16th = {(60 / bpm / 4).toFixed(3)}s</div>
+  </div>
+
+  <script type="application/json" id={`${uid}-data`}>
+    {JSON.stringify({ primary0, secondary0, note, secondaryNote, bpm, duration })}
+  </script>
+
+  <script>
+    import { SynthEngine } from '../lib/SynthEngine';
+
+    const container = (document.currentScript as HTMLScriptElement).parentElement as HTMLElement;
+    const playBtn = container.querySelector('[data-action="play"]') as HTMLButtonElement;
+    const loopBtn = container.querySelector('[data-action="loop"]') as HTMLButtonElement;
+    const stopBtn = container.querySelector('[data-action="stop"]') as HTMLButtonElement;
+
+    // Props mirrored into script scope via embedded JSON
+    const dataEl = container.querySelector('script[type="application/json"]') as HTMLScriptElement;
+    const cfg = JSON.parse(dataEl.textContent || '{}');
+    const stepsA: number[] = cfg.primary0 || [];
+    const stepsB: number[] = cfg.secondary0 || [];
+    const noteA: number = cfg.note ?? 60;
+    const noteB: number = cfg.secondaryNote ?? 67;
+    const bpmVal: number = cfg.bpm ?? 120;
+    const dur: number = cfg.duration ?? 0.06;
+
+  const synth = new SynthEngine();
+  let loopTimer: number | undefined;
+
+  function msPerStep(bpm: number) {
+    return (60_000 / bpm) / 4; // 16th note @ BPM
+  }
+
+  async function playOnce() {
+    await synth.ensureContextResumed();
+    const stepMs = msPerStep(bpmVal);
+    const now = performance.now();
+
+    for (let i = 0; i < 16; i++) {
+      const t = now + i * stepMs;
+      const doA = stepsA.includes(i);
+      const doB = stepsB.includes(i);
+      if (doA) {
+        setTimeout(() => synth.playChord([noteA], dur), Math.max(0, t - performance.now()));
+      }
+      if (doB) {
+        setTimeout(() => synth.playChord([noteB], dur), Math.max(0, t - performance.now()));
+      }
+    }
+  }
+
+  function startLoop() {
+    if (loopTimer) return;
+    playOnce();
+    const period = msPerStep(bpmVal) * 16;
+    loopTimer = window.setInterval(playOnce, period);
+  }
+
+  function stopLoop() {
+    if (loopTimer) {
+      clearInterval(loopTimer);
+      loopTimer = undefined;
+    }
+  }
+
+    playBtn?.addEventListener('click', playOnce);
+    loopBtn?.addEventListener('click', startLoop);
+    stopBtn?.addEventListener('click', stopLoop);
+  </script>
+</div>
+
+<style>
+  /* 16 equal columns utility since Tailwind doesn't include grid-cols-16 by default */
+  .grid-cols-16 { grid-template-columns: repeat(16, minmax(0, 1fr)); }
+</style>
+
+{/* Inline replace of container id marker in the client script */}
+<!-- no inline patching needed; script uses parentElement as container -->

@@ -4,10 +4,45 @@ description: "The Afro-Cuban rhythmic key and foundational pattern."
 order: 1
 ---
 import ClavePlayer from '../../components/ClavePlayer.astro';
+import StepSequencer16 from '../../components/StepSequencer16.astro';
 
-[cite_start]The clave (Spanish for "key") is a foundational rhythmic pattern originating in Afro-Cuban music. [cite: 11] It consists
-[cite_start]of a cycle of five strokes that serves as a "key" around which other instruments organize their phrases.[cite: 12]...
+The clave (Spanish for "key") is a five‑stroke timeline from Afro‑Cuban music that other parts lock to. Instead of being just a sound, it functions like a rhythmic spine: when parts stay “in clave,” the music naturally gains forward motion and swing.
 
-*(...paste the rest of the 'Clave' section from your PDF here)*
+Common forms
+- Son clave (3‑2 or 2‑3): five hits over two bars. In 4/4 counted in sixteenths, the classic 3‑2 version accents 1, the “a” of 1, the “&” of 2, the “&” of 3, and 4.
+- Rumba clave (3‑2 or 2‑3): identical except the third hit lands one sixteenth later (on 2a instead of 2&), giving a more rolling, syncopated feel.
+- Tresillo: the first three notes of the son clave (1, 1a, 2&) form a near‑even three‑over‑two spacing that shows up everywhere from Latin to pop and reggaeton.
+
+Why it works
+- Asymmetry (3+2 or 2+3 across two measures) creates tension/release.
+- Acts as a guide for phrasing and syncopation even if the physical clave sound is muted.
+- Fits straight 4/4 or 12/8 feels; tiny placement changes reshape the groove.
+
+Sequencing with synths
+- Map the five hits to stabs, bass notes, or percussive synth clicks instead of claps/sticks.
+- Choose a short, crisp voice (pluck, block, click); let drums and pads orbit this timeline.
+- Switch between 3‑2 and 2‑3 (rotation) to flip the push–pull of a section.
+- Use tresillo on bass for immediate danceable syncopation; let hats ride straight for contrast.
+- Try 12/8 phrasing for a lilting, Afro‑inspired swing; or keep it in straight 4/4 for techno contexts.
+
+Arrangement ideas
+- Build around the five anchors: fill remaining grid slots sparsely for air and propulsion.
+- Layer polymetric parts against the clave (e.g., a 5‑step melodic loop over a 4/4 grid) to intensify the forward pull while keeping a clear reference.
+- Automate rotation: shift the starting step by one sixteenth between sections for subtle evolution.
+
+Musical intuition
+- A little space goes a long way: five decisive notes can carry an entire groove.
+- Keep at least one obvious pulse (kick or drone) so syncopation reads as intentional, not messy.
 
 <ClavePlayer />
+
+Examples (16‑step)
+
+- Son clave (3‑2) mapped to 16th‑note grid
+  <StepSequencer16 title="Son Clave (3‑2) • steps 1,4,7,11,13" steps={[1,4,7,11,13]} note={72} bpm={110} />
+
+- Rumba clave (3‑2) mapped to 16th‑note grid
+  <StepSequencer16 title="Rumba Clave (3‑2) • steps 1,4,8,11,13" steps={[1,4,8,11,13]} note={72} bpm={110} />
+
+- Tresillo across one bar (repeats each half‑bar)
+  <StepSequencer16 title="Tresillo • steps 1,4,7,9,12,15" steps={[1,4,7,9,12,15]} note={67} bpm={110} />

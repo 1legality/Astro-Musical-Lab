@@ -1,19 +1,36 @@
 ---
-title: "3. Polyrhythms"
+title: "2. Polyrhythms"
 description: "Layering contrasting rhythmic cycles."
-order: 3
+order: 2
 ---
+import StepSequencer16 from '../../components/StepSequencer16.astro';
 
-Polyrhythm literally means "many rhythms." A polyrhythm occurs when two or more different rhythmic
-[cite_start]patterns with different subdivisions are performed together while sharing a common downbeat.[cite: 48, 49]...
+Polyrhythms occur when two or more different subdivisions share a common start (same downbeat) but divide time differently. Example: 3 evenly‑spaced notes against 2 in the same span (3:2). Unlike polymeter (different bar lengths), polyrhythm layers contrasting grids within the same bar.
 
-*(...paste the 'Polyrhythms' section here)*---
-title: "3. polymeters"
-description: "Layering contrasting rhythmic cycles."
-order: 3
----
+Common ratios and feel
+- 3:2 (hemiola): classic cross‑rhythm; strong, danceable push–pull.
+- 4:3: four against three; feels slightly denser and more mechanical.
+- 5:4, 5:3, 7:4: odd‑over‑even patterns add tension and a modern/IDM edge.
+- Quintuplets/septuplets: exotic note groupings for more experimental textures.
 
-Polyrhythm literally means "many rhythms." A polyrhythm occurs when two or more different rhythmic
-[cite_start]patterns with different subdivisions are performed together while sharing a common downbeat.[cite: 48, 49]...
+Programming in a DAW (e.g., Bitwig/Ableton)
+- Use independent grid subdivisions: program one part on triplets and another on straight values.
+- Align the first hit of each layer; let patterns complete over the bar length.
+- Use different note lengths/velocities per layer to improve separation.
+- Modulation approach: cross‑modulate LFOs with different step counts (e.g., 5‑step vs 4‑step) to imprint polyrhythmic movement on filters, pitch, or amplitude.
+- Humanize selectively: add slight swing or micro‑delays to one layer to enhance the tug‑of‑war.
 
-*(...paste the 'Polyrhythms' section here)*
+Musical impact
+- Built‑in tension/release as the layers drift and realign.
+- Clearer with contrasting timbres: bell vs. bass, pluck vs. pad.
+- Works great over a steady 4/4 kick to keep footing while adding complexity.
+
+Tips
+- Start simple (3:2) and add one odd layer at a time.
+- Let one layer carry melody and the other act percussive to avoid clutter.
+- For aggressive grooves, quantize one layer tight and leave the other slightly loose.
+
+Examples (16‑step)
+
+- Polyrhythm 3:2 mapped to 16 (three pulses over one bar): steps 1,6,11
+  <StepSequencer16 title="Polyrhythm 3:2 • steps 1,6,11" steps={[1,6,11]} note={76} bpm={120} />
