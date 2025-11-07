@@ -22,19 +22,28 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
 <div id={uid} class="w-full bg-white/70 rounded-lg border border-gray-200 p-4 shadow-sm">
   {title && <h3 class="text-sm font-semibold text-gray-800 mb-3">{title}</h3>}
 
-  <div class="grid grid-cols-16 gap-1 mb-3">
-    {Array.from({ length: 16 }).map((_, i) => {
-      const isA = primary0.includes(i);
-      const isB = secondary0.includes(i);
-      const both = isA && isB;
-      // Grouping separators every 4 steps
-      const groupRight = ((i + 1) % 4 === 0) && i !== 15;
-      return (
-        <div class={`relative flex items-center justify-center h-8 select-none rounded-sm border ${both ? 'bg-purple-500/80 border-purple-600 text-white' : isA ? 'bg-blue-500/80 border-blue-600 text-white' : isB ? 'bg-emerald-500/80 border-emerald-600 text-white' : 'bg-gray-100 border-gray-200 text-gray-500'} ${groupRight ? 'mr-2' : ''}`}>
-          <span class="text-[10px] leading-none">{i + 1}</span>
-        </div>
-      );
-    })}
+  <div class="">
+    <div class="relative mb-3">
+      <div class="grid grid-cols-16 gap-1">
+        {Array.from({ length: 16 }).map((_, i) => {
+          const isA = primary0.includes(i);
+          const isB = secondary0.includes(i);
+          const both = isA && isB;
+          return (
+            <div class={`relative flex items-center justify-center w-full aspect-square select-none rounded-sm border ${both ? 'bg-purple-500/80 border-purple-600 text-white' : isA ? 'bg-blue-500/80 border-blue-600 text-white' : isB ? 'bg-emerald-500/80 border-emerald-600 text-white' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+              <span class="text-[10px] leading-none">{i + 1}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* visual group separators at 25%, 50%, 75% without affecting cell widths */}
+      <div class="pointer-events-none absolute inset-0">
+        <div class="absolute top-0 bottom-0 w-px bg-gray-300/70" style="left: 25%"></div>
+        <div class="absolute top-0 bottom-0 w-px bg-gray-300/70" style="left: 50%"></div>
+        <div class="absolute top-0 bottom-0 w-px bg-gray-300/70" style="left: 75%"></div>
+      </div>
+    </div>
   </div>
 
   <div class="flex items-center gap-2">
@@ -51,63 +60,63 @@ const secondary0 = Array.from(new Set(secondarySteps)).map(n => Number(n) - 1).f
   <script>
     import { SynthEngine } from '../lib/SynthEngine';
 
-    const container = (document.currentScript as HTMLScriptElement).parentElement as HTMLElement;
-    const playBtn = container.querySelector('[data-action="play"]') as HTMLButtonElement;
-    const loopBtn = container.querySelector('[data-action="loop"]') as HTMLButtonElement;
-    const stopBtn = container.querySelector('[data-action="stop"]') as HTMLButtonElement;
+    const container = document.getElementById("{uid}");
+    const playBtn = container?.querySelector('[data-action="play"]');
+    const loopBtn = container?.querySelector('[data-action="loop"]');
+    const stopBtn = container?.querySelector('[data-action="stop"]');
 
     // Props mirrored into script scope via embedded JSON
-    const dataEl = container.querySelector('script[type="application/json"]') as HTMLScriptElement;
-    const cfg = JSON.parse(dataEl.textContent || '{}');
-    const stepsA: number[] = cfg.primary0 || [];
-    const stepsB: number[] = cfg.secondary0 || [];
-    const noteA: number = cfg.note ?? 60;
-    const noteB: number = cfg.secondaryNote ?? 67;
-    const bpmVal: number = cfg.bpm ?? 120;
-    const dur: number = cfg.duration ?? 0.06;
+    const dataEl = document.getElementById("{uid}-data");
+    const cfg = JSON.parse((dataEl && dataEl.textContent) || '{}');
+    const stepsA = cfg.primary0 || [];
+    const stepsB = cfg.secondary0 || [];
+    const noteA = cfg.note ?? 60;
+    const noteB = cfg.secondaryNote ?? 67;
+    const bpmVal = cfg.bpm ?? 120;
+    const dur = cfg.duration ?? 0.06;
 
-  const synth = new SynthEngine();
-  let loopTimer: number | undefined;
+    const synth = new SynthEngine();
+    let loopTimer;
 
-  function msPerStep(bpm: number) {
-    return (60_000 / bpm) / 4; // 16th note @ BPM
-  }
+    function msPerStep(bpm) {
+      return (60000 / bpm) / 4; // 16th note @ BPM
+    }
 
-  async function playOnce() {
-    await synth.ensureContextResumed();
-    const stepMs = msPerStep(bpmVal);
-    const now = performance.now();
+    async function playOnce() {
+      await synth.ensureContextResumed();
+      const stepMs = msPerStep(bpmVal);
+      const now = performance.now();
 
-    for (let i = 0; i < 16; i++) {
-      const t = now + i * stepMs;
-      const doA = stepsA.includes(i);
-      const doB = stepsB.includes(i);
-      if (doA) {
-        setTimeout(() => synth.playChord([noteA], dur), Math.max(0, t - performance.now()));
-      }
-      if (doB) {
-        setTimeout(() => synth.playChord([noteB], dur), Math.max(0, t - performance.now()));
+      for (let i = 0; i < 16; i++) {
+        const t = now + i * stepMs;
+        const doA = stepsA.includes(i);
+        const doB = stepsB.includes(i);
+        if (doA) {
+          setTimeout(() => synth.playChord([noteA], dur), Math.max(0, t - performance.now()));
+        }
+        if (doB) {
+          setTimeout(() => synth.playChord([noteB], dur), Math.max(0, t - performance.now()));
+        }
       }
     }
-  }
 
-  function startLoop() {
-    if (loopTimer) return;
-    playOnce();
-    const period = msPerStep(bpmVal) * 16;
-    loopTimer = window.setInterval(playOnce, period);
-  }
-
-  function stopLoop() {
-    if (loopTimer) {
-      clearInterval(loopTimer);
-      loopTimer = undefined;
+    function startLoop() {
+      if (loopTimer) return;
+      playOnce();
+      const period = msPerStep(bpmVal) * 16;
+      loopTimer = window.setInterval(playOnce, period);
     }
-  }
 
-    playBtn?.addEventListener('click', playOnce);
-    loopBtn?.addEventListener('click', startLoop);
-    stopBtn?.addEventListener('click', stopLoop);
+    function stopLoop() {
+      if (loopTimer) {
+        clearInterval(loopTimer);
+        loopTimer = undefined;
+      }
+    }
+
+    playBtn && playBtn.addEventListener('click', playOnce);
+    loopBtn && loopBtn.addEventListener('click', startLoop);
+    stopBtn && stopBtn.addEventListener('click', stopLoop);
   </script>
 </div>
 
