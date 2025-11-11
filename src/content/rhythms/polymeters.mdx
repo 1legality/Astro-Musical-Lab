@@ -3,7 +3,7 @@ title: "3. Polymeters"
 description: "Different meters running in parallel."
 order: 3
 ---
-import StepSequencer16 from '../../components/StepSequencer16.astro';
+import StepSequencer16 from '../../components/StepSequencer16.tsx';
 
 A polymeter runs two or more different meters at once (e.g., 4/4 against 5/4). Unlike polyrhythm (different subdivisions inside the same bar), polymeter uses different loop lengths, so parts realign only after a number of beats equal to the least common multiple of the meters.
 
@@ -33,4 +33,5 @@ Examples (16‑step)
   note={24}
   secondarynote={36}
   bpm={120}
+  client:only="react"
 />

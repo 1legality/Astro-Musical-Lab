@@ -3,7 +3,7 @@ title: "2. Polyrhythms"
 description: "Layering contrasting rhythmic cycles."
 order: 2
 ---
-import StepSequencer16 from '../../components/StepSequencer16.astro';
+import StepSequencer16 from '../../components/StepSequencer16.tsx';
 
 Polyrhythms occur when two or more different subdivisions share a common start (same downbeat) but divide time differently. Example: 3 evenly‑spaced notes against 2 in the same span (3:2). Unlike polymeter (different bar lengths), polyrhythm layers contrasting grids within the same bar.
 
@@ -33,4 +33,4 @@ Tips
 Examples (16‑step)
 
 - Polyrhythm 3:2 mapped to 16 (three pulses over one bar): steps 1,6,11
-  <StepSequencer16 title="Polyrhythm 3:2 • steps 1,6,11" steps={[1,6,11]} note={36} bpm={120} />
+  <StepSequencer16 title="Polyrhythm 3:2 • steps 1,6,11" steps={[1,6,11]} note={36} bpm={120} client:only="react" />

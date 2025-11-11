@@ -3,7 +3,7 @@ title: "1. Clave Patterns"
 description: "The Afro-Cuban rhythmic key and foundational pattern."
 order: 1
 ---
-import StepSequencer16 from '../../components/StepSequencer16.astro';
+import StepSequencer16 from '../../components/StepSequencer16.tsx';
 
 The clave (Spanish for "key") is a five‑stroke timeline from Afro‑Cuban music that other parts lock to. Instead of being just a sound, it functions like a rhythmic spine: when parts stay “in clave,” the music naturally gains forward motion and swing.
 
@@ -36,10 +36,10 @@ Musical intuition
 Examples (16‑step)
 
 - Son clave (3‑2) mapped to 16th‑note grid
-  <StepSequencer16 title="Son Clave (3‑2) • steps 1,4,7,11,13" steps={[1,4,7,11,13]} note={36} bpm={110} />
+  <StepSequencer16 title="Son Clave (3‑2) • steps 1,4,7,11,13" steps={[1,4,7,11,13]} note={36} bpm={110} client:only="react" />
 
 - Rumba clave (3‑2) mapped to 16th‑note grid
-  <StepSequencer16 title="Rumba Clave (3‑2) • steps 1,4,8,11,13" steps={[1,4,8,11,13]} note={36} bpm={110} />
+  <StepSequencer16 title="Rumba Clave (3‑2) • steps 1,4,8,11,13" steps={[1,4,8,11,13]} note={36} bpm={110} client:only="react" />
 
 - Tresillo across one bar (repeats each half‑bar)
-  <StepSequencer16 title="Tresillo • steps 1,4,7,9,12,15" steps={[1,4,7,9,12,15]} note={36} bpm={110} />
+  <StepSequencer16 title="Tresillo • steps 1,4,7,9,12,15" steps={[1,4,7,9,12,15]} note={36} bpm={110} client:only="react" />
