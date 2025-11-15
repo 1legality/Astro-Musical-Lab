@@ -6,7 +6,7 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'lab.malandry.com',
+  site: 'https://lab.malandry.com',
   trailingSlash: 'never',
   integrations: [mdx(), react()],
   vite: {
