@@ -8,6 +8,7 @@ import react from '@astrojs/react';
 export default defineConfig({
   site: 'https://1legality.github.io',
   base: '/Astro-Musical-Lab',
+  trailingSlash: 'never',
   integrations: [mdx(), react()],
   vite: {
     plugins: [tailwindcss()]
