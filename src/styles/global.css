@@ -1,6 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui";
+@plugin "daisyui" {
+  themes: dracula --default;
+}
 
 /* Optional small tweaks for better defaults */
 @layer base {

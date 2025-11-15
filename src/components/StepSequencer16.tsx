@@ -126,42 +126,68 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   };
 
   return (
-    <div className="w-full bg-zinc-800/50 rounded-lg border border-zinc-700 p-4 shadow-sm">
-      {title && <h3 className="text-sm font-semibold text-zinc-200 mb-3">{title}</h3>}
-      <div className="relative mb-3">
-        <div className="grid grid-cols-16 gap-1">
-          {Array.from({ length: 16 }).map((_, i) => {
-            const isA = activeSteps[i];
-            const isB = activeSecondarySteps[i];
-            const both = isA && isB;
-            const isCurrent = isPlaying && currentStep === i;
-            
-            let baseClasses = 'relative flex items-center justify-center w-full aspect-square select-none rounded-sm border cursor-pointer transition-colors';
-            let colorClasses = both ? 'bg-fuchsia-500/80 border-fuchsia-400 text-white' : isA ? 'bg-sky-500/80 border-sky-400 text-white' : isB ? 'bg-amber-500/80 border-amber-400 text-white' : 'bg-zinc-700/50 border-zinc-600/80 text-zinc-400';
-            if (isCurrent) {
-                colorClasses = 'ring-2 ring-offset-2 ring-offset-zinc-800 ring-green-400';
-            }
+    <div className="card bg-base-200/70 border border-base-300 shadow-xl">
+      <div className="card-body space-y-4">
+        {title && <h3 className="card-title text-sm font-semibold uppercase tracking-wide">{title}</h3>}
+        <div className="relative">
+          <div className="grid grid-cols-16 gap-1">
+            {Array.from({ length: 16 }).map((_, i) => {
+              const isA = activeSteps[i];
+              const isB = activeSecondarySteps[i];
+              const both = isA && isB;
+              const isCurrent = isPlaying && currentStep === i;
 
-            return (
-              <div key={i} className={`${baseClasses} ${colorClasses}`} onClick={() => toggleStep(i)}>
-                <span className="text-[10px] leading-none">{i + 1}</span>
-              </div>
-            );
-          })}
+              const baseClasses =
+                'btn btn-square btn-xs font-semibold select-none transition-colors duration-150';
+              let colorClasses =
+                'btn-outline btn-neutral text-base-content/70 border-base-300 bg-base-100/40 hover:text-base-content';
+              if (both) {
+                colorClasses = 'btn-accent text-accent-content';
+              } else if (isA) {
+                colorClasses = 'btn-primary text-primary-content';
+              } else if (isB) {
+                colorClasses = 'btn-warning text-warning-content';
+              }
+
+              const indicator = isCurrent
+                ? 'ring ring-offset-2 ring-offset-base-200 ring-secondary'
+                : '';
+
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={`${baseClasses} ${colorClasses} ${indicator}`}
+                  onClick={() => toggleStep(i)}
+                >
+                  <span className="text-[10px] leading-none">{i + 1}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute top-0 bottom-0 w-px bg-base-300" style={{ left: '25%' }}></div>
+            <div className="absolute top-0 bottom-0 w-px bg-base-300" style={{ left: '50%' }}></div>
+            <div className="absolute top-0 bottom-0 w-px bg-base-300" style={{ left: '75%' }}></div>
+          </div>
         </div>
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute top-0 bottom-0 w-px bg-zinc-600/70" style={{ left: '25%' }}></div>
-          <div className="absolute top-0 bottom-0 w-px bg-zinc-600/70" style={{ left: '50%' }}></div>
-          <div className="absolute top-0 bottom-0 w-px bg-zinc-600/70" style={{ left: '75%' }}></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={handlePlay} className="btn btn-primary btn-sm">
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <button onClick={handleStop} className="btn btn-error btn-sm">
+            Stop
+          </button>
+          <button
+            onClick={() => setIsLooping(!isLooping)}
+            className={`btn btn-sm ${isLooping ? 'btn-secondary' : 'btn-outline btn-secondary'}`}
+          >
+            {isLooping ? 'Loop On' : 'Loop Off'}
+          </button>
+          <div className="badge badge-outline badge-lg font-mono gap-1">
+            {bpm} BPM <span>•</span> 16th = {(60 / bpm / 4).toFixed(3)}s
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button onClick={handlePlay} className="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded">{isPlaying ? 'Pause' : 'Play'}</button>
-        <button onClick={handleStop} className="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded">Stop</button>
-        <button onClick={() => setIsLooping(!isLooping)} className={`${isLooping ? 'bg-indigo-600' : 'bg-gray-500'} hover:bg-indigo-700 text-white text-sm py-1 px-3 rounded`}>
-          {isLooping ? 'Loop On' : 'Loop Off'}
-        </button>
-        <div className="ml-3 text-xs text-zinc-400">{bpm} BPM • 16th = {(60 / bpm / 4).toFixed(3)}s</div>
       </div>
       <style>{`.grid-cols-16 { grid-template-columns: repeat(16, minmax(0, 1fr)); }`}</style>
     </div>
