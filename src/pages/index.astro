@@ -6,6 +6,8 @@ import MainLayout from '../layouts/MainLayout.astro';
 // Get all rhythms and sort them
 const allRhythms = (await getCollection('rhythms'))
   .sort((a: CollectionEntry<'rhythms'>, b: CollectionEntry<'rhythms'>) => a.data.order - b.data.order);
+const chordTools = (await getCollection('ChordProgressionTool'))
+  .sort((a: CollectionEntry<'ChordProgressionTool'>, b: CollectionEntry<'ChordProgressionTool'>) => a.data.order - b.data.order);
 ---
 <MainLayout title="Rhythm Encyclopedia">
   <p>Welcome! Select a rhythm type to learn more.</p>
@@ -19,4 +21,19 @@ const allRhythms = (await getCollection('rhythms'))
       </li>
     ))}
   </ul>
+  {chordTools.length > 0 && (
+    <>
+      <h2>Interactive Tools</h2>
+      <ul>
+        {chordTools.map((tool: CollectionEntry<'ChordProgressionTool'>) => (
+          <li>
+            <a href={`/tools/${tool.slug}`}>
+              <strong>{tool.data.title}</strong>
+            </a>
+            {tool.data.description && <p>{tool.data.description}</p>}
+          </li>
+        ))}
+      </ul>
+    </>
+  )}
 </MainLayout>

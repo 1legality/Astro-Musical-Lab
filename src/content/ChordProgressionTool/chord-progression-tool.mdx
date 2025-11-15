@@ -1,0 +1,26 @@
+---
+title: 'Chord Progression MIDI Lab'
+description: 'Paste any harmonic sketch, audition voicings, and export polished MIDI/PDF parts in seconds.'
+order: 0
+---
+import ChordProgressionGenerator from '../../components/ChordProgressionGenerator.tsx';
+
+<ChordProgressionGenerator client:only="react" />
+
+## Input Syntax Cheat Sheet
+
+- Separate chords with spaces: `Cmaj7 Dm7 G7`.
+- Append durations with `:` in bars, named values (`q`, `dq`, `wh`), or ticks (`T192`).
+- Add slash chords (`F/A`), single notes with octaves (`C#3`), or rests (`R:0.5`).
+- Change feels fast by requesting fresh progressions from an LLM or your own notes; just paste, tweak, then preview.
+
+## Workflow Tips
+
+1. **Set the vibe** – Give the tool a short description when prompting your favorite AI assistant (e.g., “deep dub techno
+   pad progression, 16 bars”) and paste the returned chords.
+2. **Choose the voicing recipe** – Toggle between chords only, chords + bass, or bass alone, and pick the inversion logic
+   (root, smooth, or wide) plus base octave.
+3. **Preview + loop** – Use the on-page synth to audition the sequence, click any chord button for spot-checking, and fine
+   tune durations or velocity until it grooves with your rhythmic system.
+4. **Export deliverables** – Click Download MIDI for DAW work, Export PDF for printable charts, or Copy Share URL when you
+   want to send someone else the exact settings.

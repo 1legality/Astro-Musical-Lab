@@ -1,0 +1,18 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import MainLayout from '../../layouts/MainLayout.astro';
+
+export async function getStaticPaths() {
+  const toolEntries = await getCollection('ChordProgressionTool');
+  return toolEntries.map((tool: CollectionEntry<'ChordProgressionTool'>) => ({
+    params: { slug: tool.slug },
+    props: { entry: tool },
+  }));
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'ChordProgressionTool'> };
+const { Content } = await entry.render();
+---
+<MainLayout title={entry.data.title}>
+  <Content />
+</MainLayout>

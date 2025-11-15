@@ -20,8 +20,18 @@ const pdfCollection = defineCollection({
   }),
 });
 
+const chordToolCollection = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    order: z.number().default(0),
+  }),
+});
+
 // Export a 'collections' object
 export const collections = {
   'rhythms': rhythmCollection,
   'PDF': pdfCollection,
+  'ChordProgressionTool': chordToolCollection,
 };
