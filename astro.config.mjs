@@ -6,6 +6,8 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://1legality.github.io',
+  base: '/Astro-Musical-Lab',
   integrations: [mdx(), react()],
   vite: {
     plugins: [tailwindcss()]
