@@ -116,15 +116,6 @@ export class SynthEngine {
      */
     public async ensureContextResumed(): Promise<void> {
         if (!this.initAudioContext()) {
-            return false;
-        }
-    }
-
-    /**
-     * Creates or resumes the AudioContext in response to a user gesture.
-     */
-    public async ensureContextResumed(): Promise<void> {
-        if (!this.initAudioContext()) {
             return;
         }
         if (this.audioContext!.state === 'suspended') {

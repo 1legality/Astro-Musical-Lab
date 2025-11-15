@@ -1,8 +1,8 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-@plugin "daisyui";
 @plugin "daisyui" {
-  themes: dracula --default;
+  themes: cyberpunk --default;
+  exclude: properties;
 }
 
 /* Optional small tweaks for better defaults */

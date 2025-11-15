@@ -7,6 +7,9 @@ import '../styles/global.css';
 const allRhythms = (await getCollection('rhythms'))
   .sort((a: CollectionEntry<'rhythms'>, b: CollectionEntry<'rhythms'>) => a.data.order - b.data.order);
 
+const overviewPage = allRhythms.find((rhythm) => rhythm.slug === 'advanced-rhythmic-systems');
+const childRhythms = allRhythms.filter((rhythm) => rhythm.slug !== 'advanced-rhythmic-systems');
+
 const { title } = Astro.props;
 ---
 <html lang="en" data-theme="cyberpunk">
@@ -20,7 +23,7 @@ const { title } = Astro.props;
     <div class="drawer lg:drawer-open">
       <input id="nav-drawer" type="checkbox" class="drawer-toggle" />
       <div class="drawer-content flex flex-col">
-        <label htmlFor="nav-drawer" class="btn btn-primary btn-sm drawer-button lg:hidden m-4 self-start">
+        <label for="nav-drawer" class="btn btn-primary btn-sm drawer-button lg:hidden m-4 self-start">
           Menu
         </label>
         <main class="mx-auto w-full max-w-4xl px-4 py-8 space-y-6">
@@ -35,18 +38,29 @@ const { title } = Astro.props;
         </main>
       </div>
       <div class="drawer-side">
-        <label htmlFor="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+        <label for="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
         <nav class="menu bg-base-100 text-base-content min-h-full w-80 p-4 space-y-2">
           <h2 class="menu-title text-sm uppercase tracking-widest text-base-400">Rhythms</h2>
           <ul>
             <li>
               <a class="font-semibold" href="/">Home</a>
             </li>
-            {allRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
+            {overviewPage && (
               <li>
-                <a href={`/rhythms/${rhythm.slug}`}>{rhythm.data.title}</a>
+                <details open>
+                  <summary>
+                    <a href={`/rhythms/${overviewPage.slug}`}>{overviewPage.data.title}</a>
+                  </summary>
+                  <ul>
+                    {childRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
+                      <li>
+                        <a href={`/rhythms/${rhythm.slug}`}>{rhythm.data.title}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               </li>
-            ))}
+            )}
           </ul>
         </nav>
       </div>
