@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
-  themes: cyberpunk --default;
+  themes: dracula --default;
   exclude: properties;
 }
 
