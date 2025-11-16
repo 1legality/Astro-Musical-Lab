@@ -7,35 +7,6 @@ import ChordProgressionGenerator from '../../components/ChordProgressionGenerato
 
 <ChordProgressionGenerator client:only="react" />
 
-<div className="alert alert-info bg-info/10 border border-info/30 text-info-content flex flex-col gap-2 mt-6">
-    <div>
-        <p className="font-semibold">💡 Quick Workflow</p>
-        <p className="text-sm">
-            Ask your favorite AI for a vibe or chord list, paste it above, choose options, and hit Download MIDI.
-        </p>
-    </div>
-    <div className="flex flex-wrap gap-2">
-        <a
-            className="btn btn-xs btn-outline"
-            href="https://chatgpt.com/g/g-682e7b9f338881919be4abdc2900b752-chord-progression-generator"
-            target="_blank"
-            rel="noreferrer"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-            ChatGPT Generator
-        </a>
-        <a
-            className="btn btn-xs btn-outline"
-            href="https://gemini.google.com/gem/1mEp9hCTbbA9UybeB3l8-ZQEkzQKC1TXh?usp=sharing"
-            target="_blank"
-            rel="noreferrer"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="m12 3-1.9 4.8-4.8 1.9 4.8 1.9L12 21l1.9-4.8 4.8-1.9-4.8-1.9L12 3zM5 8l-1 2-2 1 2 1 1 2 1-2 2-1-2-1-1-2zM19 16l-1 2-2 1 2 1 1 2 1-2 2-1-2-1-1-2z"/></svg>
-            Gemini Generator
-        </a>
-    </div>
-</div>
-
 ## Input Syntax Cheat Sheet
 
 - Separate chords with spaces: `Cmaj7 Dm7 G7`.
@@ -45,8 +16,7 @@ import ChordProgressionGenerator from '../../components/ChordProgressionGenerato
 
 ## Workflow Tips
 
-1. **Set the vibe** – Give the tool a short description when prompting your favorite AI assistant (e.g., “deep dub techno
-   pad progression, 16 bars”) and paste the returned chords.
+1. **Get Ideas from AI** – Use an AI assistant to brainstorm progressions. Try the custom [ChatGPT Generator](https://chatgpt.com/g/g-682e7b9f338881919be4abdc2900b752-chord-progression-generator) or [Google Gemini](https://gemini.google.com/gem/1mEp9hCTbbA9UybeB3l8-ZQEkzQKC1TXh?usp=sharing) with a prompt like “deep dub techno pad progression, 16 bars,” then paste the results into the tool.
 2. **Choose the voicing recipe** – Toggle between chords only, chords + bass, or bass alone, and pick the inversion logic
    (root, smooth, or wide) plus base octave.
 3. **Preview + loop** – Use the on-page synth to audition the sequence, click any chord button for spot-checking, and fine
