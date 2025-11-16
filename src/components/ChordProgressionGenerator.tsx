@@ -32,8 +32,8 @@ export interface StatusMessage {
 }
 
 const defaultValues: FormValues = {
-  progression: 'C:1 G:0.5 Am F',
-  outputFileName: 'progression',
+  progression: '',
+  outputFileName: '',
   tempo: 120,
   baseOctave: 4,
   chordDuration: '1',
@@ -238,14 +238,15 @@ const ChordProgressionGenerator: React.FC = () => {
 
       const query = params.toString();
       const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-      window.history.replaceState({}, '', url);
+      try {
+        window.history.replaceState({}, '', url);
+      } catch (e) {
+        console.warn('URL state could not be updated, possibly due to sandboxing.');
+      }
     },
     [urlReady]
   );
 
-  useEffect(() => {
-    updateUrl(formValues);
-  }, [formValues, updateUrl]);
 
   useEffect(() => {
     isLoopingRef.current = isLooping;
@@ -322,14 +323,28 @@ const ChordProgressionGenerator: React.FC = () => {
     [formValues, midiGenerator, stopLoop]
   );
 
+  const debounceTimeoutRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!urlReady) return;
     if (typeof window === 'undefined') return;
-    const handle = window.setTimeout(() => handleGenerate(), 350);
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = window.setTimeout(() => {
+      updateUrl(formValues);
+    }, 500); // 500ms debounce delay
+
+    const generateHandle = window.setTimeout(() => handleGenerate(), 350);
+
     return () => {
-      clearTimeout(handle);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      clearTimeout(generateHandle);
     };
-  }, [formValues, handleGenerate, urlReady]);
+  }, [formValues, handleGenerate, urlReady, updateUrl]);
 
   const handleValueChange = useCallback(
     <K extends keyof FormValues>(field: K, value: FormValues[K]) => {

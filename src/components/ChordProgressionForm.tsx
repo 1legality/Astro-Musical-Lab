@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { OutputType, InversionType } from '../lib/chords/MidiGenerator';
 import type { FormValues, StatusMessage } from './ChordProgressionGenerator';
 import ChordSyntaxHelpModal from './ChordSyntaxHelpModal';
@@ -58,6 +58,17 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
   hasPreview,
 }) => {
   const [showInfo, setShowInfo] = useState(false);
+  const [localVelocity, setLocalVelocity] = useState(values.velocity);
+
+  useEffect(() => {
+    setLocalVelocity(values.velocity);
+  }, [values.velocity]);
+
+  const handleVelocityCommit = () => {
+    if (localVelocity !== values.velocity) {
+      onValueChange('velocity', localVelocity);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -65,8 +76,9 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
         <label className="label">
           <span className="label-text font-semibold">Chord Progression</span>
         </label>
-        <textarea
-          className="textarea textarea-bordered h-28"
+        <input
+          type="text"
+          className="input input-bordered block w-full"
           placeholder="C:1 G:0.5 Am F"
           value={values.progression}
           onChange={(event) => onValueChange('progression', event.target.value)}
@@ -183,17 +195,17 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
 
       <div className="form-control">
         <label className="label">
-          <span className="label-text font-semibold">
-            Velocity (loudness): <span className="font-mono">{values.velocity}</span>
-          </span>
+          <span className="label-text font-semibold">Velocity ({localVelocity})</span>
         </label>
         <input
           type="range"
           min={1}
           max={127}
-          value={values.velocity}
-          onChange={(event) => onValueChange('velocity', Number(event.target.value))}
-          className="range range-primary"
+          className="range range-primary block w-full"
+          value={localVelocity}
+          onChange={(e) => setLocalVelocity(Number(e.target.value))}
+          onMouseUp={handleVelocityCommit}
+          onTouchEnd={handleVelocityCommit}
         />
       </div>
 
