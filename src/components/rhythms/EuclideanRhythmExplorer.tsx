@@ -30,7 +30,7 @@ const EuclideanRhythmExplorer: React.FC = () => {
         <label className="form-control w-32">
           <span className="label-text text-xs uppercase tracking-wide">Grid Size</span>
           <select
-            className="select select-bordered select-sm"
+            className="select select-bordered select-sm mt-1"
             value={gridSteps}
             onChange={event => setGridSteps(Number(event.target.value))}
           >
@@ -48,10 +48,10 @@ const EuclideanRhythmExplorer: React.FC = () => {
             min={1}
             max={gridSteps}
             value={pulses}
-            className="range range-xs"
+            className="range range-xs mt-1"
             onChange={event => setPulses(Number(event.target.value))}
           />
-          <span className="text-sm font-mono">{pulses}</span>
+          <span className="text-xs font-mono text-right text-base-content/70">{pulses}</span>
         </label>
         <label className="form-control w-48">
           <span className="label-text text-xs uppercase tracking-wide">Rotate</span>
@@ -60,10 +60,10 @@ const EuclideanRhythmExplorer: React.FC = () => {
             min={0}
             max={gridSteps - 1}
             value={rotation}
-            className="range range-xs"
+            className="range range-xs mt-1"
             onChange={event => setRotation(Number(event.target.value))}
           />
-          <span className="text-sm font-mono">{rotation} steps</span>
+          <span className="text-xs font-mono text-right text-base-content/70">{rotation} steps</span>
         </label>
       </div>
       <StepSequencer16
