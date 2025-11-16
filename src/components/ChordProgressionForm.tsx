@@ -28,7 +28,6 @@ const outputTypeLabels: Record<OutputType, string> = {
   chordsAndBass: 'Chords + Bass',
   bassOnly: 'Bass Only',
   bassAndFifth: 'Bass + Fifth (Power Chord)',
-  notesOnly: 'Note Grid (Custom)',
 };
 
 const inversionLabels: Record<InversionType, string> = {

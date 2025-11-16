@@ -170,7 +170,7 @@ export const TPQN = 128; // MIDI Writer JS default ticks per quarter note
 const OCTAVE_ADJUSTMENT_THRESHOLD = 6; // Adjust if average pitch is > 6 semitones (half octave) away from target
 
 // Define the possible output types
-export type OutputType = 'chordsOnly' | 'chordsAndBass' | 'bassOnly' | 'notesOnly' | 'bassAndFifth';
+export type OutputType = 'chordsOnly' | 'chordsAndBass' | 'bassOnly' | 'bassAndFifth';
 export type InversionType = 'none' | 'first' | 'smooth' | 'pianist' | 'open' | 'spread' | 'cocktail';
 
 export interface MidiGenerationOptions {
@@ -563,105 +563,6 @@ export class MidiGenerator {
         // Only declare totalSteps and totalBars once, at the top
         const totalSteps = options.totalSteps || 16;
         const totalBars = options.totalBars || 4;
-        let stepTicks = TPQN; // default: 1 quarter note per step
-        if (options.outputType === 'notesOnly' && totalSteps && totalBars) {
-            stepTicks = (TPQN * 4 * totalBars) / totalSteps;
-        }
-
-        // --- Special handling for notesOnly mode ---
-        if (outputType === 'notesOnly') {
-            // Parse progressionString into note events
-            const notesForPianoRoll: NoteData[] = [];
-            const parts = options.progressionString.split(/\s+/).filter(Boolean);
-            for (const part of parts) {
-                // Format: NoteOrMidi:P#:L#:V#
-                const tokens = part.split(':');
-                let midiNote: number | null = null;
-                let pos = 0;
-                let len = 1;
-                let vel = options.velocity || 100;
-                for (const token of tokens) {
-                    if (/^[A-G][#b]?\d+$|^\d+$/.test(token)) {
-                        if (/^\d+$/.test(token)) {
-                            midiNote = parseInt(token, 10);
-                        } else {
-                            const m = token.match(/^([A-G][#b]?)(\d+)$/i);
-                            if (m) midiNote = this.getMidiNote(m[1], parseInt(m[2], 10));
-                        }
-                    } else if (/^P(\d+)$/i.test(token)) {
-                        pos = parseInt(token.slice(1), 10) - 1;
-                    } else if (/^L(\d+)$/i.test(token)) {
-                        len = parseInt(token.slice(1), 10);
-                    } else if (/^V(\d+)$/i.test(token)) {
-                        vel = parseInt(token.slice(1), 10);
-                    }
-                }
-                if (midiNote === null) continue;
-                notesForPianoRoll.push({
-                    midiNote,
-                    startTimeTicks: pos * stepTicks,
-                    durationTicks: len * stepTicks,
-                    velocity: vel
-                });
-            }
-            // Build MIDI
-            const TPQN = 128;
-            // Calculate stepTicks so that the total number of steps fits into one 4/4 bar.
-            let stepTicksFinal = (TPQN * 4) / totalSteps; // e.g., for 16 steps, each step is a 16th note.
-            const track = new MidiWriter.Track();
-            track.setTempo(tempo);
-            track.setTimeSignature(4, 4, 24, 8);
-            // Add each event as a single note with its full length
-            // Sort events by startStep to ensure correct timing
-            notesForPianoRoll.sort((a, b) => a.startTimeTicks - b.startTimeTicks);
-
-            let currentTrackTick = 0; // Explicitly manage the track's current time position
-
-            for (const ev of notesForPianoRoll) {
-                const startTick = ev.startTimeTicks;
-                const durationTick = ev.durationTicks;
-
-                // Calculate the wait time needed to reach the note's desired absolute start position.
-                // This is the difference between the desired start time and the current track time.
-                const waitTime = startTick - currentTrackTick;
-
-                // If waitTime is positive, it means there's a gap before this note. Add a rest.
-                if (waitTime > 0) {
-                    track.addEvent(new MidiWriter.NoteEvent({
-                        pitch: [], // No pitch for a rest
-                        duration: 'T' + waitTime,
-                        velocity: 0 // No velocity for a rest
-                    }));
-                    currentTrackTick += waitTime; // Advance track position by the rest
-                }
-                // If waitTime is 0 or negative, the note starts at or before currentTrackTick.
-                // For a single-track step sequencer, negative waitTime implies an overlap
-                // or that the previous note extended past this note's start.
-                // midi-writer-js will place the note at the current track position if wait is 0 or undefined.
-                // We proceed to add the note directly without a 'wait' parameter in this case.
-
-                track.addEvent(new MidiWriter.NoteEvent({
-                    pitch: [ev.midiNote],
-                    duration: 'T' + durationTick,
-                    velocity: ev.velocity
-                }));
-                currentTrackTick += durationTick; // Advance track position by the note's duration
-            }
-            // Add a final rest/wait event to fill the grid to totalSteps (not maxStep)
-            const totalTicks = totalSteps * stepTicksFinal;
-            if (currentTrackTick < totalTicks) {
-                track.addEvent(new MidiWriter.NoteEvent({
-                    pitch: [],
-                    wait: 'T' + (totalTicks - currentTrackTick),
-                    duration: 'T0',
-                    velocity: 0
-                }));
-            }
-            const writer = new MidiWriter.Writer([track]);
-            const midiDataBytes = writer.buildFile();
-            const midiBlob = this.buildMidiBlob(midiDataBytes);
-            return { notesForPianoRoll, midiBlob, finalFileName, chordDetails: [] };
-        }
 
         const chordEntries = progressionString.trim().split(/\s+/); // e.g., ["Am:0.5", "G:1", "C/G", "R:1"]
         // Capture: root, quality/extensions (not including slash), optional "/bassRoot"

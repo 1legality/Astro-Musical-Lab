@@ -29,8 +29,7 @@ const ChordSyntaxHelpModal: React.FC<ChordSyntaxHelpModalProps> = ({ open, onClo
   const chordRows = useMemo(() => {
     return Object.entries(CHORD_FORMULAS).map(([quality, intervals]) => {
       const label = quality ? quality : 'Major';
-      const friendlyLabel = quality === '1' ? 'Single Note (Root)' : label;
-      return { label: friendlyLabel, intervals: intervals.join(', ') };
+      return { label: label, intervals: intervals.join(', ') };
     });
   }, []);
 

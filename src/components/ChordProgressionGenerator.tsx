@@ -488,32 +488,6 @@ const ChordProgressionGenerator: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="alert alert-info bg-info/10 border border-info/30 text-info-content flex flex-col gap-2">
-        <div>
-          <p className="font-semibold">💡 Quick Workflow</p>
-          <p className="text-sm">
-            Ask your favorite AI for a vibe or chord list, paste it above, choose options, and hit Download MIDI.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <a
-            className="btn btn-xs btn-outline"
-            href="https://chatgpt.com/g/g-682e7b9f338881919be4abdc2900b752-chord-progression-generator"
-            target="_blank"
-            rel="noreferrer"
-          >
-            ChatGPT Generator
-          </a>
-          <a
-            className="btn btn-xs btn-outline"
-            href="https://gemini.google.com/gem/1mEp9hCTbbA9UybeB3l8-ZQEkzQKC1TXh?usp=sharing"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Gemini Generator
-          </a>
-        </div>
-      </div>
     </div>
   );
 };
