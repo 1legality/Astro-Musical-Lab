@@ -18,13 +18,15 @@ export interface ActiveNote {
 export class SynthEngine {
     public audioContext: AudioContext | null = null;
     private mainGainNode: GainNode | null = null;
+    private compressorNode: DynamicsCompressorNode | null = null;
+    private postGainNode: GainNode | null = null;
     private reverbNode: ConvolverNode | null = null;
     private pannerNode: StereoPannerNode | null = null;
     private reverbSendGain: GainNode | null = null;
     private activeNotes: Set<ActiveNote> = new Set();
     private initialVolume: number;
-    private readonly minBaseFrequency = 80; // Hz, keep sounds within small speaker range
-    private readonly detuneSemitones = 12; // Drop an octave but stay punchy
+    private readonly minBaseFrequency = 160; // Hz, tuned for phone speakers
+    private readonly detuneSemitones = 9; // Drop just enough for tom character
 
     constructor(initialVolume: number = 0.5) {
         this.initialVolume = Math.max(0, Math.min(1, initialVolume));
@@ -45,19 +47,39 @@ export class SynthEngine {
         }
         try {
             this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-            this.mainGainNode = this.audioContext.createGain();
-            this.pannerNode = this.audioContext.createStereoPanner();
-            this.reverbNode = this.audioContext.createConvolver();
-            this.reverbSendGain = this.audioContext.createGain();
+            const mainGain = this.audioContext.createGain();
+            const compressor = this.audioContext.createDynamicsCompressor();
+            const postGain = this.audioContext.createGain();
+            const panner = this.audioContext.createStereoPanner();
+            const reverb = this.audioContext.createConvolver();
+            const reverbSend = this.audioContext.createGain();
+
+            this.mainGainNode = mainGain;
+            this.compressorNode = compressor;
+            this.postGainNode = postGain;
+            this.pannerNode = panner;
+            this.reverbNode = reverb;
+            this.reverbSendGain = reverbSend;
 
             // Basic signal chain: mainGain -> panner -> destination
-            this.mainGainNode.connect(this.pannerNode);
-            this.pannerNode.connect(this.audioContext.destination);
+            mainGain.connect(compressor);
+            compressor.connect(postGain);
+            postGain.connect(panner);
+            panner.connect(this.audioContext.destination);
+
+            // Gentle compression lets us push gain without clipping
+            const comp = compressor;
+            comp.threshold.setValueAtTime(-24, this.audioContext.currentTime);
+            comp.knee.setValueAtTime(30, this.audioContext.currentTime);
+            comp.ratio.setValueAtTime(6, this.audioContext.currentTime);
+            comp.attack.setValueAtTime(0.005, this.audioContext.currentTime);
+            comp.release.setValueAtTime(0.25, this.audioContext.currentTime);
+            postGain.gain.setValueAtTime(1.6, this.audioContext.currentTime);
 
             // Parallel reverb chain: mainGain -> reverbSend -> reverb -> destination
-            this.mainGainNode.connect(this.reverbSendGain);
-            this.reverbSendGain.connect(this.reverbNode);
-            this.reverbNode.connect(this.audioContext.destination);
+            postGain.connect(reverbSend);
+            reverbSend.connect(reverb);
+            reverb.connect(this.audioContext.destination);
 
             this.setReverb(0.4); // Default reverb mix
             this.createReverbImpulseResponse();
@@ -93,14 +115,12 @@ export class SynthEngine {
      * @param mix A value from 0 (fully dry) to 1 (fully wet).
      */
     public setReverb(mix: number): void {
-        if (!this.reverbSendGain || !this.pannerNode) return;
+        if (!this.reverbSendGain) return;
         const clampedMix = Math.max(0, Math.min(1, mix));
         // Equal-power crossfade
         this.reverbSendGain.gain.value = clampedMix;
-        if (this.pannerNode) {
-            // This is a simplification; a true dry path would be separate.
-            // For now, we just control the send to the reverb.
-        }
+        // This is a simplification; a true dry path would be separate.
+        // For now, we just control the send to the reverb.
     }
 
     /**
@@ -154,14 +174,14 @@ export class SynthEngine {
         const osc1 = this.audioContext!.createOscillator();
         osc1.type = 'sine'; // Smooth fundamental for a tom
         // Gentle downward bend to avoid laser-like sweep
-        osc1.frequency.setValueAtTime(baseFrequency * 1.8, now);
-        osc1.frequency.exponentialRampToValueAtTime(baseFrequency * 0.95, now + 0.18);
+        osc1.frequency.setValueAtTime(baseFrequency * 1.6, now);
+        osc1.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.2);
 
         const osc2 = this.audioContext!.createOscillator();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(baseFrequency * 1.35, now);
-        osc2.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.22);
-        osc2.detune.setValueAtTime(-30, now); // Light beating for body
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(baseFrequency * 2.1, now);
+        osc2.frequency.exponentialRampToValueAtTime(baseFrequency * 1.05, now + 0.18);
+        osc2.detune.setValueAtTime(-20, now); // Light beating for body
 
         // --- Noise for the "crack" of the stick hit ---
         const noise = this.audioContext!.createBufferSource();
@@ -176,17 +196,17 @@ export class SynthEngine {
         // --- Filter to shape the noise into a sharp "crack" ---
         const filter = this.audioContext!.createBiquadFilter();
         filter.type = 'bandpass';
-        filter.Q.value = 1.5;
-        filter.frequency.setValueAtTime(4500, now);
-        filter.frequency.exponentialRampToValueAtTime(400, now + 0.06);
+        filter.Q.value = 1.2;
+        filter.frequency.setValueAtTime(6500, now);
+        filter.frequency.exponentialRampToValueAtTime(900, now + 0.05);
 
         const noiseGain = this.audioContext!.createGain();
-        noiseGain.gain.setValueAtTime(0.5, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        noiseGain.gain.setValueAtTime(0.9, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
         const noteGain = this.audioContext!.createGain();
         // Amplitude envelope for a percussive hit
-        noteGain.gain.setValueAtTime(1.3, now); // Boost peak level for mobile speakers
+        noteGain.gain.setValueAtTime(1.5, now); // Boost peak level for mobile speakers
         noteGain.gain.exponentialRampToValueAtTime(0.001, now + durationSeconds * 1.5);
 
         // --- Connect the audio graph ---
@@ -236,14 +256,14 @@ export class SynthEngine {
 
         const osc1 = this.audioContext!.createOscillator();
         osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(baseFrequency * 1.8, now);
-        osc1.frequency.exponentialRampToValueAtTime(baseFrequency * 0.95, now + 0.18);
+        osc1.frequency.setValueAtTime(baseFrequency * 1.6, now);
+        osc1.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.2);
 
         const osc2 = this.audioContext!.createOscillator();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(baseFrequency * 1.35, now);
-        osc2.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.22);
-        osc2.detune.setValueAtTime(-30, now);
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(baseFrequency * 2.1, now);
+        osc2.frequency.exponentialRampToValueAtTime(baseFrequency * 1.05, now + 0.18);
+        osc2.detune.setValueAtTime(-20, now);
 
         const noise = this.audioContext!.createBufferSource();
         const bufferSize = this.audioContext!.sampleRate * 0.05;
@@ -256,16 +276,16 @@ export class SynthEngine {
 
         const filter = this.audioContext!.createBiquadFilter();
         filter.type = 'bandpass';
-        filter.Q.value = 1.5;
-        filter.frequency.setValueAtTime(4500, now);
-        filter.frequency.exponentialRampToValueAtTime(400, now + 0.06);
+        filter.Q.value = 1.2;
+        filter.frequency.setValueAtTime(6500, now);
+        filter.frequency.exponentialRampToValueAtTime(900, now + 0.05);
 
         const noiseGain = this.audioContext!.createGain();
-        noiseGain.gain.setValueAtTime(0.5, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        noiseGain.gain.setValueAtTime(0.9, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
         const noteGain = this.audioContext!.createGain();
-        noteGain.gain.setValueAtTime(1.3, now); // Boost sustained hits as well
+        noteGain.gain.setValueAtTime(1.5, now); // Boost sustained hits as well
 
         osc1.connect(noteGain);
         osc2.connect(noteGain);
