@@ -101,7 +101,7 @@ function validateProgression(rawProgression: string): string {
       const isTickCode = /^t\d+$/i.test(durationStr);
       if (!isValidNumeric && !isKnownCode && !isTickCode) {
         throw new Error(
-          `Invalid duration "${durationStr}" for chord "${symbol}". Use beats (0.5, 1), codes (q, dq) or ticks (T128).`
+          `Invalid duration "${durationStr}" for chord "${symbol}". Use bar lengths as numbers (0.5, 1) or ticks (T128).`
         );
       }
       validated.push(`${symbol}:${durationStr}`);
@@ -438,37 +438,65 @@ const ChordProgressionGenerator: React.FC = () => {
   const chordDetails: ChordGenerationData[] = generation?.chordDetails ?? [];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="card bg-base-100 shadow-xl border border-base-200">
-        <div className="card-body space-y-5">
-          <ChordProgressionForm
-            values={formValues}
-            onValueChange={handleValueChange}
-            onDownloadMidi={() => handleGenerate({ download: true })}
-            onCopyShareUrl={handleCopyShareUrl}
-            onExportPdf={handleExportPdf}
-            status={status}
-            isGenerating={isGenerating}
-            hasPreview={notesForRoll.length > 0}
-          />
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="card bg-base-100 shadow-xl border border-base-200">
+          <div className="card-body space-y-5">
+            <ChordProgressionForm
+              values={formValues}
+              onValueChange={handleValueChange}
+              onDownloadMidi={() => handleGenerate({ download: true })}
+              onCopyShareUrl={handleCopyShareUrl}
+              onExportPdf={handleExportPdf}
+              status={status}
+              isGenerating={isGenerating}
+              hasPreview={notesForRoll.length > 0}
+            />
+          </div>
+        </div>
+        <div className="card bg-base-100 shadow-xl border border-base-200">
+          <div className="card-body space-y-4">
+            <ChordProgressionPianoRoll
+              notes={notesForRoll}
+              chordDetails={chordDetails}
+              synth={synthRef.current}
+              chordIndicator={chordIndicator}
+              onChordIndicatorChange={setChordIndicator}
+              onPlayProgression={startLoop}
+              onStopProgression={stopLoop}
+              isLooping={isLooping}
+            />
+            <div className="text-xs text-base-content/70">
+              Preview updates automatically whenever you change the form. The loop playback respects the current output
+              type so you can focus on chords, bass, or both.
+            </div>
+          </div>
         </div>
       </div>
-      <div className="card bg-base-100 shadow-xl border border-base-200">
-        <div className="card-body space-y-4">
-          <ChordProgressionPianoRoll
-            notes={notesForRoll}
-            chordDetails={chordDetails}
-            synth={synthRef.current}
-            chordIndicator={chordIndicator}
-            onChordIndicatorChange={setChordIndicator}
-            onPlayProgression={startLoop}
-            onStopProgression={stopLoop}
-            isLooping={isLooping}
-          />
-          <div className="text-xs text-base-content/70">
-            Preview updates automatically whenever you change the form. The loop playback respects the current output
-            type so you can focus on chords, bass, or both.
-          </div>
+      <div className="alert alert-info bg-info/10 border border-info/30 text-info-content flex flex-col gap-2">
+        <div>
+          <p className="font-semibold">💡 Quick Workflow</p>
+          <p className="text-sm">
+            Ask your favorite AI for a vibe or chord list, paste it above, choose options, and hit Download MIDI.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a
+            className="btn btn-xs btn-outline"
+            href="https://chatgpt.com/g/g-682e7b9f338881919be4abdc2900b752-chord-progression-generator"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ChatGPT Generator
+          </a>
+          <a
+            className="btn btn-xs btn-outline"
+            href="https://gemini.google.com/gem/1mEp9hCTbbA9UybeB3l8-ZQEkzQKC1TXh?usp=sharing"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Gemini Generator
+          </a>
         </div>
       </div>
     </div>

@@ -93,19 +93,23 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h3 className="text-lg font-semibold">Piano Roll Preview</h3>
+    <div className="space-y-5">
+      <header className="space-y-1">
+        <h3 className="card-title text-lg font-semibold">Piano Roll Preview</h3>
         <p className="text-sm text-base-content/70">
           Visual representation of the generated notes and quick-access chord audition buttons.
         </p>
       </header>
 
-      <canvas ref={canvasRef} className="w-full h-64 rounded-xl border border-base-300 bg-base-200" />
+      <div className="rounded-box border border-base-300 bg-base-200/80 p-2 shadow-inner">
+        <canvas ref={canvasRef} className="h-64 w-full rounded-box bg-base-100" />
+      </div>
 
-      <div className="space-y-2">
+      <div className="rounded-box border border-base-300/70 bg-base-100/70 p-3 space-y-2">
         <div className="flex flex-wrap gap-2">
-          {playableChords.length === 0 && <span className="text-sm text-base-content/70">Generate a progression to get chord buttons.</span>}
+          {playableChords.length === 0 && (
+            <span className="text-sm text-base-content/70">Generate a progression to get chord buttons.</span>
+          )}
           {playableChords.map((chord, index) => (
             <button
               type="button"
@@ -134,11 +138,21 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
         <p className="text-sm text-base-content/70">{chordIndicator}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <button type="button" className="btn btn-success" onClick={onPlayProgression} disabled={isLooping}>
+      <div className="flex flex-wrap gap-3 items-center">
+        <button
+          type="button"
+          className="btn btn-primary w-full sm:w-auto"
+          onClick={onPlayProgression}
+          disabled={isLooping}
+        >
           ▶ Play Progression (Loop)
         </button>
-        <button type="button" className="btn btn-error btn-outline" onClick={onStopProgression} disabled={!isLooping}>
+        <button
+          type="button"
+          className="btn btn-outline btn-error w-full sm:w-auto"
+          onClick={onStopProgression}
+          disabled={!isLooping}
+        >
           ■ Stop
         </button>
         <span className="badge badge-outline">Loop status: {isLooping ? 'Playing' : 'Idle'}</span>
