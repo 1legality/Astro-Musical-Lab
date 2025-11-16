@@ -145,7 +145,7 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
           onClick={onPlayProgression}
           disabled={isLooping}
         >
-          ▶ Play Progression (Loop)
+          Play Progression (Loop)
         </button>
         <button
           type="button"
@@ -153,7 +153,7 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
           onClick={onStopProgression}
           disabled={!isLooping}
         >
-          ■ Stop
+          Stop
         </button>
         <span className="badge badge-outline">Loop status: {isLooping ? 'Playing' : 'Idle'}</span>
       </div>
