@@ -126,50 +126,52 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   };
 
   return (
-    <div className="card bg-base-200/70 border border-base-300 shadow-xl">
+    <div className="card bg-base-200/70 w-fit">
       <div className="card-body space-y-4">
-        {title && <h3 className="card-title text-sm font-semibold uppercase tracking-wide">{title}</h3>}
-        <div className="relative">
-          <div className="grid grid-cols-16 gap-1">
-            {Array.from({ length: 16 }).map((_, i) => {
-              const isA = activeSteps[i];
-              const isB = activeSecondarySteps[i];
-              const both = isA && isB;
-              const isCurrent = isPlaying && currentStep === i;
+        {title && (
+          <h3 className="card-title text-sm font-semibold uppercase tracking-wide mt-0">
+            {title}
+          </h3>
+        )}
+        <div className="flex flex-wrap justify-start gap-x-4 gap-y-2">
+          {Array.from({ length: 4 }).map((_, groupIndex) => (
+            <div key={groupIndex} className="flex gap-1">
+              {Array.from({ length: 4 }).map((_, itemIndex) => {
+                const i = groupIndex * 4 + itemIndex;
+                const isA = activeSteps[i];
+                const isB = activeSecondarySteps[i];
+                const both = isA && isB;
+                const isCurrent = isPlaying && currentStep === i;
 
-              const baseClasses =
-                'btn btn-square btn-xs font-semibold select-none transition-colors duration-150';
-              let colorClasses =
-                'btn-outline btn-neutral text-base-content/70 border-base-300 bg-base-100/40 hover:text-base-content';
-              if (both) {
-                colorClasses = 'btn-accent text-accent-content';
-              } else if (isA) {
-                colorClasses = 'btn-primary text-primary-content';
-              } else if (isB) {
-                colorClasses = 'btn-warning text-warning-content';
-              }
+                const baseClasses =
+                  'btn btn-square font-semibold select-none transition-colors duration-150';
+                let colorClasses =
+                  'btn-outline btn-neutral text-base-content/70 border-base-300 bg-base-100/40 hover:text-base-content';
+                if (both) {
+                  colorClasses = 'btn-accent text-accent-content';
+                } else if (isA) {
+                  colorClasses = 'btn-primary text-primary-content';
+                } else if (isB) {
+                  colorClasses = 'btn-warning text-warning-content';
+                }
 
-              const indicator = isCurrent
-                ? 'ring ring-offset-2 ring-offset-base-200 ring-secondary'
-                : '';
+                const indicator = isCurrent
+                  ? 'ring ring-offset-2 ring-offset-base-200 ring-secondary'
+                  : '';
 
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  className={`${baseClasses} ${colorClasses} ${indicator}`}
-                  onClick={() => toggleStep(i)}
-                >
-                  <span className="text-[10px] leading-none">{i + 1}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="pointer-events-none absolute inset-0 opacity-40">
-            <div className="absolute top-0 bottom-0 w-px bg-base-300" style={{ left: '25%' }}></div>
-            <div className="absolute top-0 bottom-0 w-px bg-base-300" style={{ left: '50%' }}></div>
-            <div className="absolute top-0 bottom-0 w-px bg-base-300" style={{ left: '75%' }}></div>
-          </div>
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`${baseClasses} ${colorClasses} ${indicator}`}
+                    onClick={() => toggleStep(i)}
+                  >
+                    <span className="text-sm leading-none">{i + 1}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={handlePlay} className="btn btn-primary btn-sm">
@@ -189,7 +191,6 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
           </div>
         </div>
       </div>
-      <style>{`.grid-cols-16 { grid-template-columns: repeat(16, minmax(0, 1fr)); }`}</style>
     </div>
   );
 };
