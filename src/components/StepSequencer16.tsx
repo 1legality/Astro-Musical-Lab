@@ -82,15 +82,11 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
 
   useEffect(() => {
     if (isPlaying) {
-      const notesToPlay: number[] = [];
       if (activeSteps[currentStep]) {
-        notesToPlay.push(note);
+        synthEngineRef.current?.playNote(note, duration);
       }
       if (activeSecondarySteps[currentStep]) {
-        notesToPlay.push(secondaryNote);
-      }
-      if (notesToPlay.length > 0 && synthEngineRef.current) {
-        synthEngineRef.current.playChord(notesToPlay, duration);
+        synthEngineRef.current?.playNote(secondaryNote, duration);
       }
     }
   }, [currentStep, isPlaying, activeSteps, activeSecondarySteps, note, secondaryNote, duration]);

@@ -11,8 +11,7 @@ export interface ActiveNote {
 }
 
 /**
- * A simple synthesizer class using the Web Audio API to play chords
- * with two detuned sawtooth oscillators per note for a basic analog synth vibe.
+ * A simple drum machine synthesizer class using the Web Audio API.
  * The AudioContext is initialized lazily on the first user gesture.
  */
 export class SynthEngine {
@@ -133,186 +132,177 @@ export class SynthEngine {
         return 440 * Math.pow(2, (midiNote - 69) / 12);
     }
 
-    public playChord(midiNotes: number[], durationSeconds: number = 0.05): void {
+    public playNote(midiNote: number, durationSeconds: number = 0.05): void {
         if (!this.initAudioContext() || !this.audioContext || !this.mainGainNode) {
             return;
         }
 
         const now = this.audioContext.currentTime;
 
-        midiNotes.forEach(note => {
-            const baseFrequency = this.midiNoteToFrequency(note - 24); // Lower pitch by 2 octaves for a deeper boom
+        const baseFrequency = this.midiNoteToFrequency(midiNote - 24); // Lower pitch by 2 octaves for a deeper boom
 
-            // --- Oscillators for the drum tone ---
-            const osc1 = this.audioContext!.createOscillator();
-            osc1.type = 'triangle'; // Triangle waves have richer harmonics than sine
-            // Dramatic pitch drop for the "thump"
-            osc1.frequency.setValueAtTime(baseFrequency * 8, now);
-            osc1.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.25);
+        // --- Oscillators for the drum tone ---
+        const osc1 = this.audioContext!.createOscillator();
+        osc1.type = 'triangle'; // Triangle waves have richer harmonics than sine
+        // Dramatic pitch drop for the "thump"
+        osc1.frequency.setValueAtTime(baseFrequency * 8, now);
+        osc1.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.15);
 
-            const osc2 = this.audioContext!.createOscillator();
-            osc2.type = 'triangle';
-            // Inharmonic partial for a more complex, drum-like tone
-            osc2.frequency.setValueAtTime(baseFrequency * 4.53, now);
-            osc2.frequency.exponentialRampToValueAtTime(baseFrequency * 0.5, now + 0.3);
+        const osc2 = this.audioContext!.createOscillator();
+        osc2.type = 'triangle';
+        // Inharmonic partial for a more complex, drum-like tone
+        osc2.frequency.setValueAtTime(baseFrequency * 4.53, now);
+        osc2.frequency.exponentialRampToValueAtTime(baseFrequency * 0.5, now + 0.2);
 
-            // --- Noise for the "crack" of the stick hit ---
-            const noise = this.audioContext!.createBufferSource();
-            const bufferSize = this.audioContext!.sampleRate * 0.05; // A much shorter, sharper noise burst
-            const buffer = this.audioContext!.createBuffer(1, bufferSize, this.audioContext!.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
+        // --- Noise for the "crack" of the stick hit ---
+        const noise = this.audioContext!.createBufferSource();
+        const bufferSize = this.audioContext!.sampleRate * 0.05; // A much shorter, sharper noise burst
+        const buffer = this.audioContext!.createBuffer(1, bufferSize, this.audioContext!.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        noise.buffer = buffer;
+
+        // --- Filter to shape the noise into a sharp "crack" ---
+        const filter = this.audioContext!.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.Q.value = 2; // A little resonance for emphasis
+        filter.frequency.setValueAtTime(6000, now);
+        filter.frequency.exponentialRampToValueAtTime(80, now + 0.02); // Very fast decay
+
+        const noteGain = this.audioContext!.createGain();
+        // Amplitude envelope for a percussive hit
+        noteGain.gain.setValueAtTime(1.0, now); // Increased from 0.8 for more punch
+        noteGain.gain.exponentialRampToValueAtTime(0.001, now + durationSeconds * 1.5);
+
+        // --- Connect the audio graph ---
+        osc1.connect(noteGain);
+        osc2.connect(noteGain);
+        noise.connect(filter);
+        filter.connect(noteGain);
+        noteGain.connect(this.mainGainNode!);
+
+        const stopTime = now + durationSeconds;
+        const activeNote: ActiveNote = { midiNote: midiNote, velocity: 1.0, duration: durationSeconds, oscillators: [osc1, osc2], noiseSource: noise, filter, noteGain, stopTime };
+        this.activeNotes.add(activeNote);
+
+        const cleanup = () => {
+            if (this.activeNotes.has(activeNote)) {
+                try {
+                    osc1.disconnect();
+                    osc2.disconnect();
+                    noise.disconnect();
+                    filter.disconnect();
+                    noteGain.disconnect();
+                } catch (e) { /* Ignore */ }
+                this.activeNotes.delete(activeNote);
             }
-            noise.buffer = buffer;
+        };
 
-            // --- Filter to shape the noise into a sharp "crack" ---
-            const filter = this.audioContext!.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.Q.value = 2; // A little resonance for emphasis
-            filter.frequency.setValueAtTime(6000, now);
-            filter.frequency.exponentialRampToValueAtTime(80, now + 0.04); // Very fast decay
+        osc1.onended = cleanup; // Clean up when the main oscillator stops
 
-            const noteGain = this.audioContext!.createGain();
-            // Amplitude envelope for a percussive hit
-            noteGain.gain.setValueAtTime(0.8, now);
-            noteGain.gain.exponentialRampToValueAtTime(0.001, now + durationSeconds * 1.5);
-
-            // --- Connect the audio graph ---
-            osc1.connect(noteGain);
-            osc2.connect(noteGain);
-            noise.connect(filter);
-            filter.connect(noteGain);
-            noteGain.connect(this.mainGainNode!);
-
-            const stopTime = now + durationSeconds;
-            const activeNote: ActiveNote = { midiNote: note, velocity: 1.0, duration: durationSeconds, oscillators: [osc1, osc2], noiseSource: noise, filter, noteGain, stopTime };
-            this.activeNotes.add(activeNote);
-
-            const cleanup = () => {
-                if (this.activeNotes.has(activeNote)) {
-                    try {
-                        osc1.disconnect();
-                        osc2.disconnect();
-                        noise.disconnect();
-                        filter.disconnect();
-                        noteGain.disconnect();
-                    } catch (e) { /* Ignore */ }
-                    this.activeNotes.delete(activeNote);
-                }
-            };
-
-            osc1.onended = cleanup; // Clean up when the main oscillator stops
-
-            osc1.start(now);
-            osc2.start(now);
-            noise.start(now);
-            osc1.stop(stopTime);
-            osc2.stop(stopTime + 0.1); // Let the inharmonic partial ring a little longer
-            noise.stop(now + 0.05);
-        });
+        osc1.start(now);
+        osc2.start(now);
+        noise.start(now);
+        osc1.stop(stopTime);
+        osc2.stop(stopTime + 0.1); // Let the inharmonic partial ring a little longer
+        noise.stop(now + 0.05);
     }
 
-    public startChord(midiNotes: number[]): ActiveNote[] {
+    public startNote(midiNote: number): ActiveNote | null {
         if (!this.initAudioContext() || !this.audioContext || !this.mainGainNode) {
-            return [];
+            return null;
         }
 
         const now = this.audioContext.currentTime;
-        const activeNotes: ActiveNote[] = [];
 
-        midiNotes.forEach(note => {
-            const baseFrequency = this.midiNoteToFrequency(note - 24); // Lower pitch by 2 octaves
+        const baseFrequency = this.midiNoteToFrequency(midiNote - 24); // Lower pitch by 2 octaves
 
-            const osc1 = this.audioContext!.createOscillator();
-            osc1.type = 'triangle';
-            osc1.frequency.setValueAtTime(baseFrequency * 8, now);
-            osc1.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.25);
+        const osc1 = this.audioContext!.createOscillator();
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(baseFrequency * 8, now);
+        osc1.frequency.exponentialRampToValueAtTime(baseFrequency, now + 0.15);
 
-            const osc2 = this.audioContext!.createOscillator();
-            osc2.type = 'triangle';
-            osc2.frequency.setValueAtTime(baseFrequency * 4.53, now);
-            osc2.frequency.exponentialRampToValueAtTime(baseFrequency * 0.5, now + 0.3);
+        const osc2 = this.audioContext!.createOscillator();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(baseFrequency * 4.53, now);
+        osc2.frequency.exponentialRampToValueAtTime(baseFrequency * 0.5, now + 0.2);
 
-            const noise = this.audioContext!.createBufferSource();
-            const bufferSize = this.audioContext!.sampleRate * 0.05;
-            const buffer = this.audioContext!.createBuffer(1, bufferSize, this.audioContext!.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-            noise.buffer = buffer;
+        const noise = this.audioContext!.createBufferSource();
+        const bufferSize = this.audioContext!.sampleRate * 0.05;
+        const buffer = this.audioContext!.createBuffer(1, bufferSize, this.audioContext!.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        noise.buffer = buffer;
 
-            const filter = this.audioContext!.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.Q.value = 2;
-            filter.frequency.setValueAtTime(6000, now);
-            filter.frequency.exponentialRampToValueAtTime(80, now + 0.04);
+        const filter = this.audioContext!.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.Q.value = 2;
+        filter.frequency.setValueAtTime(6000, now);
+        filter.frequency.exponentialRampToValueAtTime(80, now + 0.02);
 
-            const noteGain = this.audioContext!.createGain();
-            noteGain.gain.setValueAtTime(0.8, now);
+        const noteGain = this.audioContext!.createGain();
+        noteGain.gain.setValueAtTime(1.0, now); // Increased from 0.8 for more punch
 
-            osc1.connect(noteGain);
-            osc2.connect(noteGain);
-            noise.connect(filter);
-            filter.connect(noteGain);
-            noteGain.connect(this.mainGainNode!);
+        osc1.connect(noteGain);
+        osc2.connect(noteGain);
+        noise.connect(filter);
+        filter.connect(noteGain);
+        noteGain.connect(this.mainGainNode!);
 
-            const activeNote: ActiveNote = {
-                midiNote: note,
-                velocity: 1.0,
-                duration: Infinity,
-                oscillators: [osc1, osc2],
-                noiseSource: noise,
-                filter,
-                noteGain,
-                stopTime: Infinity
-            };
-            this.activeNotes.add(activeNote);
-            activeNotes.push(activeNote);
+        const activeNote: ActiveNote = {
+            midiNote: midiNote,
+            velocity: 1.0,
+            duration: Infinity,
+            oscillators: [osc1, osc2],
+            noiseSource: noise,
+            filter,
+            noteGain,
+            stopTime: Infinity
+        };
+        this.activeNotes.add(activeNote);
 
-            osc1.start(now);
-            osc2.start(now);
-            noise.start(now);
-        });
+        osc1.start(now);
+        osc2.start(now);
+        noise.start(now);
 
-        return activeNotes;
+        return activeNote;
     }
 
-    public stopNotes(notesToStop?: ActiveNote[]): void {
-        if (!this.initAudioContext() || !this.audioContext || this.activeNotes.size === 0) {
+    public stopNote(noteToStop: ActiveNote): void {
+        if (!this.initAudioContext() || !this.audioContext || !this.activeNotes.has(noteToStop)) {
             return;
         }
 
         const now = this.audioContext.currentTime;
         const fadeOutDuration = 0.1; // Slightly longer fade for a more natural drum decay
-        const notes = notesToStop || Array.from(this.activeNotes);
 
-        notes.forEach(activeNote => {
-            activeNote.noteGain.gain.cancelScheduledValues(now);
-            activeNote.noteGain.gain.setValueAtTime(activeNote.noteGain.gain.value, now);
-            activeNote.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + fadeOutDuration);
+        noteToStop.noteGain.gain.cancelScheduledValues(now);
+        noteToStop.noteGain.gain.setValueAtTime(noteToStop.noteGain.gain.value, now);
+        noteToStop.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + fadeOutDuration);
 
-            const manualStopTime = now + fadeOutDuration + 0.01;
-            activeNote.oscillators.forEach(osc => {
-                try {
-                    osc.stop(manualStopTime);
-                    activeNote.noiseSource?.stop(now); // Stop noise immediately
-                } catch (e) { /* Ignore */ }
-            });
-
-            setTimeout(() => {
-                if (this.activeNotes.has(activeNote)) {
-                    try {
-                        activeNote.oscillators.forEach(osc => osc.disconnect());
-                        activeNote.noiseSource?.disconnect();
-                        activeNote.filter?.disconnect();
-                        activeNote.noteGain.disconnect();
-                    } catch (e) { /* Ignore */ }
-                    this.activeNotes.delete(activeNote);
-                }
-            }, fadeOutDuration * 1000 + 50);
+        const manualStopTime = now + fadeOutDuration + 0.01;
+        noteToStop.oscillators.forEach(osc => {
+            try {
+                osc.stop(manualStopTime);
+                noteToStop.noiseSource?.stop(now); // Stop noise immediately
+            } catch (e) { /* Ignore */ }
         });
+
+        setTimeout(() => {
+            if (this.activeNotes.has(noteToStop)) {
+                try {
+                    noteToStop.oscillators.forEach(osc => osc.disconnect());
+                    noteToStop.noiseSource?.disconnect();
+                    noteToStop.filter?.disconnect();
+                    noteToStop.noteGain.disconnect();
+                } catch (e) { /* Ignore */ }
+                this.activeNotes.delete(noteToStop);
+            }
+        }, fadeOutDuration * 1000 + 50);
     }
 
     public stopAll(): void {
