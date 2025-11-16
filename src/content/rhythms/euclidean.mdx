@@ -3,7 +3,7 @@ title: "4. Euclidean Rhythms"
 description: "Maximally even beat distributions and the Bjorklund algorithm."
 order: 4
 ---
-import StepSequencer16 from '../../components/StepSequencer16.tsx';
+import EuclideanRhythmExplorer from '../../components/rhythms/EuclideanRhythmExplorer.tsx';
 
 Euclidean rhythms distribute a fixed number of pulses as evenly as possible across a fixed number of steps. Many traditional patterns (clave families, West African bells, Middle Eastern rhythms) can be expressed this way.
 
@@ -27,13 +27,8 @@ Sound design and feel
 - Add swing or tiny micro‑delays to avoid mechanical stiffness—Euclidean does not have to be rigid.
 - Delay tricks: dotted or triplet delays against a straight Euclidean line produce lush polymetric echoes.
 
-Examples (16‑step)
+Examples (16-step)
 
-- E(5,16) (maximally even 5 hits): typical steps 1,4,7,11,14
-  <StepSequencer16 title="E(5,16) • steps 1,4,7,11,14" steps={[1,4,7,11,14]} note={36} bpm={120} client:only="react" />
+- Use the sequencer below to dial in any E(k, n) pattern. The grid selector swaps between 8/12/16-step canvases, the pulse slider changes k (density), and the rotation slider offsets the start point without changing the evenness.
 
-- E(5,16) rotated +1: steps 2,5,8,12,15
-  <StepSequencer16 title="E(5,16) Rot+1 • steps 2,5,8,12,15" steps={[2,5,8,12,15]} note={36} bpm={120} client:only="react" />
-
-- E(7,16): steps 1,3,5,7,10,12,14
-  <StepSequencer16 title="E(7,16) • steps 1,3,5,7,10,12,14" steps={[1,3,5,7,10,12,14]} note={36} bpm={120} client:only="react" />
+<EuclideanRhythmExplorer client:only="react" />

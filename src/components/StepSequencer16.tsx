@@ -10,8 +10,24 @@ interface StepSequencer16Props {
   secondaryNote?: number;
   bpm?: number;
   duration?: number;
-  client: "load" | "idle" | "visible" | "media" | "only";
+  totalSteps?: number;
+  client?: 'load' | 'idle' | 'visible' | 'media' | 'only';
 }
+
+const clampStep = (step: number, max: number) => {
+  if (max <= 0) return 0;
+  const normalized = ((step - 1) % max + max) % max;
+  return normalized;
+};
+
+const createActiveArray = (length: number, indices: number[]) => {
+  const arr = Array(Math.max(1, length)).fill(false);
+  indices.forEach(step => {
+    const normalized = clampStep(step, arr.length);
+    arr[normalized] = true;
+  });
+  return arr;
+};
 
 const StepSequencer16: React.FC<StepSequencer16Props> = ({
   title,
@@ -21,22 +37,15 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   secondaryNote = 67,
   bpm = 120,
   duration = 0.06,
+  totalSteps = 16,
 }) => {
-  const [activeSteps, setActiveSteps] = useState<boolean[]>(() => {
-    const initial = Array(16).fill(false);
-    steps.forEach(s => {
-      if (s > 0 && s <= 16) initial[s - 1] = true;
-    });
-    return initial;
-  });
+  const [activeSteps, setActiveSteps] = useState<boolean[]>(() =>
+    createActiveArray(totalSteps, steps),
+  );
 
-  const [activeSecondarySteps, setSecondaryActiveSteps] = useState<boolean[]>(() => {
-    const initial = Array(16).fill(false);
-    secondarySteps.forEach(s => {
-      if (s > 0 && s <= 16) initial[s - 1] = true;
-    });
-    return initial;
-  });
+  const [activeSecondarySteps, setSecondaryActiveSteps] = useState<boolean[]>(() =>
+    createActiveArray(totalSteps, secondarySteps),
+  );
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(true);
@@ -57,12 +66,12 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
       intervalRef.current = setInterval(() => {
         setCurrentStep(prev => {
           const nextStep = (prev + 1);
-          if (nextStep >= 16) {
+          if (nextStep >= totalSteps) {
             if (isLooping) {
               return 0;
             } else {
               setIsPlaying(false);
-              return 15; // Stay on last step
+              return Math.max(0, totalSteps - 1); // Stay on last step
             }
           }
           return nextStep;
@@ -78,7 +87,7 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, isLooping, stepTime]);
+  }, [isPlaying, isLooping, stepTime, totalSteps]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -121,6 +130,23 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
     }
   };
 
+  const primarySignature = steps.join(',');
+  const secondarySignature = secondarySteps.join(',');
+
+  useEffect(() => {
+    setActiveSteps(createActiveArray(totalSteps, steps));
+  }, [primarySignature, totalSteps]);
+
+  useEffect(() => {
+    setSecondaryActiveSteps(createActiveArray(totalSteps, secondarySteps));
+  }, [secondarySignature, totalSteps]);
+
+  useEffect(() => {
+    setCurrentStep(prev => Math.min(prev, Math.max(0, totalSteps - 1)));
+  }, [totalSteps]);
+
+  const groups = Math.ceil(totalSteps / 4);
+
   return (
     <div className="card bg-base-200/70 w-fit">
       <div className="card-body space-y-4">
@@ -130,10 +156,13 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
           </h3>
         )}
         <div className="flex flex-wrap justify-start gap-x-4 gap-y-2">
-          {Array.from({ length: 4 }).map((_, groupIndex) => (
+          {Array.from({ length: groups }).map((_, groupIndex) => (
             <div key={groupIndex} className="flex gap-1">
               {Array.from({ length: 4 }).map((_, itemIndex) => {
                 const i = groupIndex * 4 + itemIndex;
+                if (i >= totalSteps) {
+                  return null;
+                }
                 const isA = activeSteps[i];
                 const isB = activeSecondarySteps[i];
                 const both = isA && isB;

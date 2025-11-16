@@ -144,8 +144,6 @@ function getNotesForOutputType(chord: ChordGenerationData, outputType: OutputTyp
       if (typeof chord.calculatedBassNote !== 'number') return [];
       const fifth = chord.calculatedBassNote + 7;
       return fifth >= 0 && fifth <= 127 ? [chord.calculatedBassNote, fifth] : [chord.calculatedBassNote];
-    case 'notesOnly':
-      return [];
     default:
       return [];
   }
@@ -187,19 +185,22 @@ const ChordProgressionGenerator: React.FC = () => {
     }
     setFormValues((prev) => {
       const next: FormValues = { ...prev };
-      const assignNumber = (key: keyof FormValues, fallback: number, clamp?: (val: number) => number) => {
+      type NumericFormKeys = 'tempo' | 'baseOctave' | 'velocity';
+      const assignNumber = <K extends NumericFormKeys>(key: K, clamp?: (val: number) => number) => {
         const raw = params.get(key as string);
         if (raw === null) return;
         const parsed = parseFloat(raw);
         if (Number.isFinite(parsed)) {
-          next[key] = clamp ? clamp(parsed) : parsed;
+          const value = clamp ? clamp(parsed) : parsed;
+          next[key] = value as FormValues[K];
         }
       };
 
-      const assignString = (key: keyof FormValues) => {
+      type StringFormKeys = 'progression' | 'outputFileName' | 'chordDuration' | 'outputType' | 'inversionType';
+      const assignString = <K extends StringFormKeys>(key: K) => {
         const raw = params.get(key as string);
         if (raw !== null && raw.trim() !== '') {
-          next[key] = raw as any;
+          next[key] = raw as FormValues[K];
         }
       };
 
@@ -208,9 +209,9 @@ const ChordProgressionGenerator: React.FC = () => {
       assignString('chordDuration');
       assignString('outputType');
       assignString('inversionType');
-      assignNumber('tempo', prev.tempo, (value) => Math.min(300, Math.max(20, value)));
-      assignNumber('baseOctave', prev.baseOctave, (value) => Math.min(6, Math.max(1, value)));
-      assignNumber('velocity', prev.velocity, (value) => Math.min(127, Math.max(1, Math.round(value))));
+      assignNumber('tempo', (value) => Math.min(300, Math.max(20, value)));
+      assignNumber('baseOctave', (value) => Math.min(6, Math.max(1, value)));
+      assignNumber('velocity', (value) => Math.min(127, Math.max(1, Math.round(value))));
       return next;
     });
     setUrlReady(true);

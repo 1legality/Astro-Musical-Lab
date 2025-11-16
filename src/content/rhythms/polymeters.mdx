@@ -3,7 +3,7 @@ title: "3. Polymeters"
 description: "Different meters running in parallel."
 order: 3
 ---
-import StepSequencer16 from '../../components/StepSequencer16.tsx';
+import PolymeterExplorer from '../../components/rhythms/PolymeterExplorer.tsx';
 
 A polymeter runs two or more different meters at once (e.g., 4/4 against 5/4). Unlike polyrhythm (different subdivisions inside the same bar), polymeter uses different loop lengths, so parts realign only after a number of beats equal to the least common multiple of the meters.
 
@@ -20,18 +20,8 @@ Musical effect
 - Subtle long‑form evolution ideal for ambient/techno.
 - A sense of drifting phase without changing tempo or using different BPMs.
 - Great with Euclidean or clave‑inspired lines riding against a fixed 4/4 backbone.
-Examples (16‑step)
+Examples
 
-- Overlay of 4‑step and 5‑step loop starts across 16 steps:
-  - 4‑step cycle starts: 1,5,9,13
-  - 5‑step cycle starts: 1,6,11,16
+- Choose the two loop lengths, optionally extend the grid (16 or 20 steps) to watch their resolution point, and rotate either loop to see how emphasis shifts even though both lines keep cycling at the same BPM.
 
-<StepSequencer16
-  title="Polymeter Overlay • 4 vs 5"
-  steps={[1,5,9,13]}
-  secondarySteps={[1,6,11,16]}
-  note={24}
-  secondarynote={36}
-  bpm={120}
-  client:only="react"
-/>
+<PolymeterExplorer client:only="react" />

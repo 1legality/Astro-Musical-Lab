@@ -104,7 +104,6 @@ export async function exportProgressionToPdf(options: MidiGenerationOptions): Pr
                         highlightNotes.push(chord.calculatedBassNote);
                     }
                     break;
-                case 'notesOnly':
                 default:
                     highlightNotes = Array.isArray(chord.adjustedVoicing) ? [...chord.adjustedVoicing] : [];
                     break;
