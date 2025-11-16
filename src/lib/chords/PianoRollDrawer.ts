@@ -24,11 +24,22 @@ export class PianoRollDrawer {
     }
     this.canvas = canvas;
     this.ctx = ctx;
+
+    const getDaisyColor = (variable: string, fallback: string) => {
+      if (typeof window === 'undefined') {
+        return fallback;
+      }
+      const style = getComputedStyle(canvas);
+      const value = style.getPropertyValue(variable).trim();
+      // daisyUI stores colors as HSL components (e.g. "259 94% 51%")
+      return value ? `hsl(${value})` : fallback;
+    };
+
     this.options = {
-      noteColor: opts.noteColor ?? '#2563eb',
-      backgroundColor: opts.backgroundColor ?? '#f5f5f7',
-      gridColor: opts.gridColor ?? '#d4d4d8',
-      emptyMessageColor: opts.emptyMessageColor ?? '#9ca3af',
+      noteColor: opts.noteColor ?? getDaisyColor('--p', '#2563eb'),
+      backgroundColor: opts.backgroundColor ?? getDaisyColor('--b1', '#f5f5f7'),
+      gridColor: opts.gridColor ?? getDaisyColor('--b3', '#d4d4d8'),
+      emptyMessageColor: opts.emptyMessageColor ?? getDaisyColor('--bc', '#9ca3af'),
     };
     this.resize();
   }

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { PianoRollDrawer } from '../lib/chords/PianoRollDrawer';
 import type { NoteData, ChordGenerationData } from '../lib/chords/MidiGenerator';
 import type { SynthChordPlayer, ActiveNote } from '../lib/chords/SynthChordPlayer';
 
@@ -14,6 +13,72 @@ interface ChordProgressionPianoRollProps {
   isLooping: boolean;
 }
 
+const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
+  if (!notes || notes.length === 0) {
+    return (
+      <div className="h-64 w-full bg-base-200 flex items-center">
+        <p className="text-base-content/70 w-full text-center">No notes to display</p>
+      </div>
+    );
+  }
+
+  let minMidi = 127;
+  let maxMidi = 0;
+  let maxTimeTicks = 0;
+  notes.forEach(note => {
+    minMidi = Math.min(minMidi, note.midiNote);
+    maxMidi = Math.max(maxMidi, note.midiNote);
+    maxTimeTicks = Math.max(maxTimeTicks, note.startTimeTicks + note.durationTicks);
+  });
+
+  minMidi = Math.max(0, minMidi - 2);
+  maxMidi = Math.min(127, maxMidi + 2);
+  const midiRange = maxMidi - minMidi + 1;
+  if (maxTimeTicks <= 0) maxTimeTicks = 1;
+
+  const gridLines = [];
+  for (let midi = minMidi; midi <= maxMidi; midi++) {
+    if (midi % 12 === 0) {
+      const y = ((midi - minMidi + 0.5) / midiRange) * 100;
+      gridLines.push(
+        <div
+          key={`grid-${midi}`}
+          className="absolute w-full border-t border-base-content/10"
+          style={{ bottom: `${y}%`, left: 0 }}
+        />
+      );
+    }
+  }
+
+  return (
+    <div className="relative h-64 w-full bg-base-200 overflow-hidden">
+      {gridLines}
+      {notes.map((note, index) => {
+        const left = (note.startTimeTicks / maxTimeTicks) * 100;
+        const width = (note.durationTicks / maxTimeTicks) * 100;
+        const bottom = ((note.midiNote - minMidi) / midiRange) * 100;
+        const height = (1 / midiRange) * 100;
+
+        return (
+          <div
+            key={index}
+            className="absolute bg-primary"
+            style={{
+              left: `${left}%`,
+              width: `${width}%`,
+              bottom: `${bottom}%`,
+              height: `${height}%`,
+              minWidth: '1px',
+              minHeight: '1px',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+
 const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
   notes,
   chordDetails,
@@ -24,29 +89,7 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
   onStopProgression,
   isLooping,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawerRef = useRef<PianoRollDrawer | null>(null);
   const activeChordNotes = useRef<Map<number, ActiveNote[]>>(new Map());
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    try {
-      drawerRef.current = new PianoRollDrawer(canvasRef.current);
-    } catch (error) {
-      console.error('Unable to setup piano roll', error);
-    }
-
-    const handleResize = () => drawerRef.current?.resize();
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      drawerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    drawerRef.current?.draw(notes);
-  }, [notes]);
 
   useEffect(() => {
     return () => {
@@ -101,8 +144,8 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
         </p>
       </header>
 
-      <div className="rounded-box border border-base-300 bg-base-200/80 p-2 shadow-inner">
-        <canvas ref={canvasRef} className="h-64 w-full rounded-box bg-base-100" />
+      <div className="rounded-box border border-base-300 shadow-inner overflow-hidden">
+        <PianoRollDisplay notes={notes} />
       </div>
 
       <div className="rounded-box border border-base-300/70 bg-base-100/70 p-3 space-y-2">
