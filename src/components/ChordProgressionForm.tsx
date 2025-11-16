@@ -104,7 +104,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
           </label>
           <input
             type="text"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={values.outputFileName}
             onChange={(event) => onValueChange('outputFileName', event.target.value)}
             placeholder="progression"
@@ -118,7 +118,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
             type="number"
             min={20}
             max={300}
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={values.tempo}
             onChange={(event) => onValueChange('tempo', Number(event.target.value))}
           />
@@ -128,7 +128,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
             <span className="label-text font-semibold">Base Octave</span>
           </label>
           <select
-            className="select select-bordered"
+            className="select select-bordered w-full"
             value={values.baseOctave}
             onChange={(event) => onValueChange('baseOctave', Number(event.target.value))}
           >
@@ -144,7 +144,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
             <span className="label-text font-semibold">Default chord duration (bars)</span>
           </label>
           <select
-            className="select select-bordered"
+            className="select select-bordered w-full"
             value={values.chordDuration}
             onChange={(event) => onValueChange('chordDuration', event.target.value)}
           >
@@ -163,7 +163,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
             <span className="label-text font-semibold">Output type</span>
           </label>
           <select
-            className="select select-bordered"
+            className="select select-bordered w-full"
             value={values.outputType}
             onChange={(event) => onValueChange('outputType', event.target.value as OutputType)}
           >
@@ -179,7 +179,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
             <span className="label-text font-semibold">Chord inversion</span>
           </label>
           <select
-            className="select select-bordered"
+            className="select select-bordered w-full"
             value={values.inversionType}
             onChange={(event) => onValueChange('inversionType', event.target.value as InversionType)}
           >
