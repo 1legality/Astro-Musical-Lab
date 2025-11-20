@@ -1,17 +1,31 @@
 ---
 // src/layouts/MainLayout.astro
-import { getCollection, type CollectionEntry } from 'astro:content';
-import '../styles/global.css';
+import { getCollection, type CollectionEntry } from "astro:content";
+import "../styles/global.css";
 
 // Get all rhythms and sort them by the 'order' prop
-const allRhythms = (await getCollection('rhythms'))
-  .sort((a: CollectionEntry<'rhythms'>, b: CollectionEntry<'rhythms'>) => a.data.order - b.data.order);
+const allRhythms = (await getCollection("rhythms")).sort(
+  (a: CollectionEntry<"rhythms">, b: CollectionEntry<"rhythms">) =>
+    a.data.order - b.data.order,
+);
 
-const chordTools = (await getCollection('ChordProgressionTool'))
-  .sort((a: CollectionEntry<'ChordProgressionTool'>, b: CollectionEntry<'ChordProgressionTool'>) => a.data.order - b.data.order);
+const chordTools = (await getCollection("ChordProgressionTool")).sort(
+  (
+    a: CollectionEntry<"ChordProgressionTool">,
+    b: CollectionEntry<"ChordProgressionTool">,
+  ) => a.data.order - b.data.order,
+);
+
+const drumPatterns = (await getCollection("DrumPatternsTools")).sort(
+  (
+    a: CollectionEntry<"DrumPatternsTools">,
+    b: CollectionEntry<"DrumPatternsTools">,
+  ) => a.data.order - b.data.order,
+);
 
 const { title } = Astro.props;
 ---
+
 <html lang="en" data-theme="cyberpunk">
   <head>
     <meta charset="utf-8" />
@@ -23,8 +37,21 @@ const { title } = Astro.props;
     <div class="drawer lg:drawer-open">
       <input id="nav-drawer" type="checkbox" class="drawer-toggle" />
       <div class="drawer-content flex flex-col">
-        <label for="nav-drawer" class="btn btn-ghost drawer-button lg:hidden m-4 self-start">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        <label
+          for="nav-drawer"
+          class="btn btn-ghost drawer-button lg:hidden m-4 self-start"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            class="inline-block w-6 h-6 stroke-current"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"></path></svg
+          >
         </label>
         <main class="mx-auto w-full max-w-7xl px-4 py-8 space-y-6">
           <div class="card bg-base-100 shadow-xl">
@@ -38,34 +65,78 @@ const { title } = Astro.props;
         </main>
       </div>
       <div class="drawer-side">
-        <label for="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <nav class="menu bg-base-100 text-base-content min-h-full w-80 p-4 space-y-2">
-          <h2 class="menu-title text-sm uppercase tracking-widest text-base-400">Navigate</h2>
+        <label
+          for="nav-drawer"
+          aria-label="close sidebar"
+          class="drawer-overlay"></label>
+        <nav
+          class="menu bg-base-100 text-base-content min-h-full w-80 p-4 space-y-2"
+        >
+          <h2
+            class="menu-title text-sm uppercase tracking-widest text-base-400"
+          >
+            Navigate
+          </h2>
           <ul>
             <li>
               <a class="font-semibold" href="/">Home</a>
             </li>
           </ul>
-          <h2 class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6">Rhythms</h2>
+          <h2
+            class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6"
+          >
+            Rhythms
+          </h2>
           <ul class="space-y-1">
-            {allRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
-              <li>
-                <a class="font-semibold" href={`/rhythms/${rhythm.slug}`}>{rhythm.data.title}</a>
-              </li>
-            ))}
+            {
+              allRhythms.map((rhythm) => (
+                <li>
+                  <a class="font-semibold" href={`/rhythms/${rhythm.slug}`}>
+                    {rhythm.data.title}
+                  </a>
+                </li>
+              ))
+            }
           </ul>
-          {chordTools.length > 0 && (
-            <>
-              <h2 class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6">Tools</h2>
-              <ul class="space-y-1">
-                {chordTools.map((tool: CollectionEntry<'ChordProgressionTool'>) => (
-                  <li>
-                    <a class="font-semibold" href={`/tools/${tool.slug}`}>{tool.data.title}</a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {
+            chordTools.length > 0 && (
+              <>
+                <h2 class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6">
+                  Tools
+                </h2>
+                <ul class="space-y-1">
+                  {chordTools.map((tool) => (
+                    <li>
+                      <a class="font-semibold" href={`/tools/${tool.slug}`}>
+                        {tool.data.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
+          }
+          {
+            drumPatterns.length > 0 && (
+              <>
+                <h2 class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6">
+                  Drum Patterns
+                </h2>
+                <ul class="space-y-1">
+                  {drumPatterns.map((pattern) => (
+                    <li>
+                      <a
+                        class="font-semibold"
+                        href={`/drum-patterns/${pattern.slug}`}
+                      >
+                        {pattern.data.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
+          }
         </nav>
       </div>
     </div>

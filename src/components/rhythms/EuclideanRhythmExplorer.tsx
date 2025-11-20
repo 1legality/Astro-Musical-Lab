@@ -69,7 +69,7 @@ const EuclideanRhythmExplorer: React.FC = () => {
       <StepSequencer16
         title={`E(${pulses}, ${gridSteps}) • rotate ${rotation}`}
         steps={rotatedPattern}
-        note={36}
+        note={60}
         bpm={120}
         totalSteps={gridSteps}
       />

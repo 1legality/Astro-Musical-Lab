@@ -8,7 +8,7 @@ const rhythmCollection = defineCollection({
     title: z.string(),
     description: z.string().optional(),
     // We'll use this to sort the list
-    order: z.number(), 
+    order: z.number(),
   }),
 });
 
@@ -34,4 +34,5 @@ export const collections = {
   'rhythms': rhythmCollection,
   'PDF': pdfCollection,
   'ChordProgressionTool': chordToolCollection,
+  'DrumPatternsTools': chordToolCollection, // Reusing schema for now as it fits (title, description, order)
 };

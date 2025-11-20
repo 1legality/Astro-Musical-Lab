@@ -86,8 +86,8 @@ const PolyrhythmExplorer: React.FC = () => {
         title={`${numerator}:${denominator} Polyrhythm`}
         steps={numeratorSteps}
         secondarySteps={denominatorSteps}
-        note={48}
-        secondaryNote={65}
+        note={60}
+        secondaryNote={72}
         bpm={120}
       />
       <p className="text-sm text-base-content/70">

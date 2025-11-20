@@ -1,0 +1,21 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import MainLayout from "../../layouts/MainLayout.astro";
+
+export async function getStaticPaths() {
+    const toolEntries = await getCollection("DrumPatternsTools");
+    return toolEntries.map((tool: CollectionEntry<"DrumPatternsTools">) => ({
+        params: { slug: tool.slug },
+        props: { entry: tool },
+    }));
+}
+
+const { entry } = Astro.props as {
+    entry: CollectionEntry<"DrumPatternsTools">;
+};
+const { Content } = await entry.render();
+---
+
+<MainLayout title={entry.data.title}>
+    <Content />
+</MainLayout>

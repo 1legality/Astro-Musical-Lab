@@ -1,39 +1,73 @@
 ---
 // src/pages/index.astro
-import { getCollection, type CollectionEntry } from 'astro:content';
-import MainLayout from '../layouts/MainLayout.astro';
+import { getCollection, type CollectionEntry } from "astro:content";
+import MainLayout from "../layouts/MainLayout.astro";
 
 // Get all rhythms and sort them
-const allRhythms = (await getCollection('rhythms'))
-  .sort((a: CollectionEntry<'rhythms'>, b: CollectionEntry<'rhythms'>) => a.data.order - b.data.order);
-const chordTools = (await getCollection('ChordProgressionTool'))
-  .sort((a: CollectionEntry<'ChordProgressionTool'>, b: CollectionEntry<'ChordProgressionTool'>) => a.data.order - b.data.order);
+const allRhythms = (await getCollection("rhythms")).sort(
+  (a: CollectionEntry<"rhythms">, b: CollectionEntry<"rhythms">) =>
+    a.data.order - b.data.order,
+);
+const chordTools = (await getCollection("ChordProgressionTool")).sort(
+  (
+    a: CollectionEntry<"ChordProgressionTool">,
+    b: CollectionEntry<"ChordProgressionTool">,
+  ) => a.data.order - b.data.order,
+);
+const drumPatterns = (await getCollection("DrumPatternsTools")).sort(
+  (
+    a: CollectionEntry<"DrumPatternsTools">,
+    b: CollectionEntry<"DrumPatternsTools">,
+  ) => a.data.order - b.data.order,
+);
 ---
+
 <MainLayout title="Rhythm Encyclopedia">
   <p>Welcome! Select a rhythm type to learn more.</p>
   <ul>
-    {allRhythms.map((rhythm: CollectionEntry<'rhythms'>) => (
-      <li>
-        <a href={`/rhythms/${rhythm.slug}`}>
-          <strong>{rhythm.data.title}</strong>
-        </a>
-        <p>{rhythm.data.description}</p>
-      </li>
-    ))}
+    {
+      allRhythms.map((rhythm) => (
+        <li>
+          <a href={`/rhythms/${rhythm.slug}`}>
+            <strong>{rhythm.data.title}</strong>
+          </a>
+          <p>{rhythm.data.description}</p>
+        </li>
+      ))
+    }
   </ul>
-  {chordTools.length > 0 && (
-    <>
-      <h2>Interactive Tools</h2>
-      <ul>
-        {chordTools.map((tool: CollectionEntry<'ChordProgressionTool'>) => (
-          <li>
-            <a href={`/tools/${tool.slug}`}>
-              <strong>{tool.data.title}</strong>
-            </a>
-            {tool.data.description && <p>{tool.data.description}</p>}
-          </li>
-        ))}
-      </ul>
-    </>
-  )}
+  {
+    chordTools.length > 0 && (
+      <>
+        <h2>Interactive Tools</h2>
+        <ul>
+          {chordTools.map((tool) => (
+            <li>
+              <a href={`/tools/${tool.slug}`}>
+                <strong>{tool.data.title}</strong>
+              </a>
+              {tool.data.description && <p>{tool.data.description}</p>}
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+  {
+    drumPatterns.length > 0 && (
+      <>
+        <h2>Drum Patterns</h2>
+        <ul>
+          {drumPatterns.map((pattern) => (
+            <li>
+              <a href={`/drum-patterns/${pattern.slug}`}>
+                <strong>{pattern.data.title}</strong>
+              </a>
+              {pattern.data.description && <p>{pattern.data.description}</p>}
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
 </MainLayout>
