@@ -104,7 +104,7 @@ const DrumPatternSection: React.FC = () => {
 
   const [grid, setGrid] = useState<StepGrid>({});
   const [totalSteps, setTotalSteps] = useState(DEFAULT_STEPS);
-  const [bpm, setBpm] = useState(96);
+  const [bpm, setBpm] = useState(120);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [status, setStatus] = useState<string>('Select a pattern to preview or export.');
@@ -403,8 +403,8 @@ const DrumPatternSection: React.FC = () => {
               </div>
               <input
                 type="range"
-                min={70}
-                max={160}
+                min={50}
+                max={240}
                 value={bpm}
                 onChange={(event) => setBpm(Number(event.target.value))}
                 className="range range-xs range-primary"
