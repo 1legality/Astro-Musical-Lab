@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MidiWriter from 'midi-writer-js';
-import { pocketLegend, pocketOperationPatterns, DEFAULT_STEPS, type PocketOperationPattern } from '../lib/drums/pocketOperations';
+import { pocketLegend, pocketOperationPatterns, sectionsInOrder, DEFAULT_STEPS, type PocketOperationPattern } from '../lib/drums/pocketOperations';
 import { SynthEngine } from '../lib/SynthEngine';
 import { TPQN } from '../lib/chords/MidiGenerator';
 import { DrumSampler } from '../lib/drums/drumSampler';
-
-interface DrumPatternSectionProps {
-  section: string;
-}
 
 type StepGrid = Record<string, boolean[]>;
 
@@ -79,12 +75,27 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'pattern';
 
-const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
+const DEFAULT_PATTERN_NAME = 'ONE AND SEVEN & FIVE AND THIRTEEN';
+
+const DrumPatternSection: React.FC = () => {
+  const defaultSection = useMemo(() => {
+    const match = pocketOperationPatterns.find((pattern) => pattern.name === DEFAULT_PATTERN_NAME);
+    return match?.section ?? sectionsInOrder[0] ?? '';
+  }, []);
+
+  const [selectedSection, setSelectedSection] = useState<string>(defaultSection);
+
   const patterns = useMemo<PocketOperationPattern[]>(
-    () => pocketOperationPatterns.filter((pattern: PocketOperationPattern) => pattern.section === section),
-    [section],
+    () => pocketOperationPatterns.filter((pattern: PocketOperationPattern) => pattern.section === selectedSection),
+    [selectedSection],
   );
-  const [selectedName, setSelectedName] = useState<string>(patterns[0]?.name ?? '');
+
+  const initialPatternName = useMemo(() => {
+    const defaultPattern = patterns.find((pattern) => pattern.name === DEFAULT_PATTERN_NAME);
+    return defaultPattern?.name ?? patterns[0]?.name ?? '';
+  }, [patterns]);
+
+  const [selectedName, setSelectedName] = useState<string>(initialPatternName);
   const selectedPattern = useMemo<PocketOperationPattern | undefined>(
     () => patterns.find((pattern: PocketOperationPattern) => pattern.name === selectedName) ?? patterns[0],
     [selectedName, patterns],
@@ -106,9 +117,18 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
       return;
     }
     if (!patterns.find((pattern: PocketOperationPattern) => pattern.name === selectedName)) {
-      setSelectedName(patterns[0]!.name);
+      const fallback = patterns.find((pattern) => pattern.name === DEFAULT_PATTERN_NAME) ?? patterns[0]!;
+      setSelectedName(fallback.name);
     }
   }, [patterns, selectedName]);
+
+  useEffect(() => {
+    // Reset pattern when section changes to keep selection valid
+    if (patterns.length > 0) {
+      const preferred = patterns.find((pattern) => pattern.name === DEFAULT_PATTERN_NAME) ?? patterns[0];
+      setSelectedName(preferred.name);
+    }
+  }, [patterns]);
 
   useEffect(() => {
     if (!selectedPattern) return;
@@ -261,7 +281,7 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
       <div className="card-body space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="badge badge-outline badge-secondary">{section}</div>
+            <div className="badge badge-outline badge-secondary">{selectedSection || 'Select a section'}</div>
             <h3 className="card-title text-xl font-bold leading-tight">
               {selectedPattern.name}
             </h3>
@@ -270,6 +290,22 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
             </p>
           </div>
           <div className="flex flex-col gap-2">
+            <label className="form-control w-full max-w-xs">
+              <div className="label">
+                <span className="label-text text-sm">Section</span>
+              </div>
+              <select
+                className="select select-bordered select-sm w-full max-w-xs"
+                value={selectedSection}
+                onChange={(event) => setSelectedSection(event.target.value)}
+              >
+                {sectionsInOrder.map((sectionOption) => (
+                  <option key={sectionOption} value={sectionOption}>
+                    {sectionOption}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="form-control w-full max-w-xs">
               <div className="label">
                 <span className="label-text text-sm">Pattern</span>
