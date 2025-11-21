@@ -3,6 +3,7 @@ import MidiWriter from 'midi-writer-js';
 import { pocketLegend, pocketOperationPatterns, DEFAULT_STEPS, type PocketOperationPattern } from '../lib/drums/pocketOperations';
 import { SynthEngine } from '../lib/SynthEngine';
 import { TPQN } from '../lib/chords/MidiGenerator';
+import { DrumSampler } from '../lib/drums/drumSampler';
 
 interface DrumPatternSectionProps {
   section: string;
@@ -97,6 +98,7 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
   const [status, setStatus] = useState<string>('Select a pattern to preview or export.');
   const intervalRef = useRef<number | null>(null);
   const synthRef = useRef<SynthEngine | null>(null);
+  const samplerRef = useRef<DrumSampler | null>(null);
 
   useEffect(() => {
     if (patterns.length === 0) {
@@ -118,10 +120,13 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    samplerRef.current = new DrumSampler();
     synthRef.current = new SynthEngine(0.42);
     return () => {
       synthRef.current?.stopAll();
       synthRef.current = null;
+      samplerRef.current?.dispose();
+      samplerRef.current = null;
     };
   }, []);
 
@@ -135,16 +140,22 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
     return [...ordered, ...extras];
   }, [selectedPattern]);
 
+  useEffect(() => {
+    samplerRef.current?.preload(visibleInstruments);
+  }, [visibleInstruments]);
+
   const playStep = useCallback(
     (index: number) => {
       const synth = synthRef.current;
-      if (!synth) return;
+      const sampler = samplerRef.current;
       visibleInstruments.forEach((instrument) => {
         const hits = grid[instrument];
         if (!hits) return;
         if (hits[index]) {
           const note = GM_DRUMS[instrument];
-          if (note !== undefined) {
+          if (sampler) {
+            sampler.play(instrument);
+          } else if (synth && note !== undefined) {
             synth.playNote(note, 0.08);
           }
         }
@@ -183,11 +194,14 @@ const DrumPatternSection: React.FC<DrumPatternSectionProps> = ({ section }) => {
   };
 
   const handlePlayPause = async () => {
-    if (!synthRef.current) {
+    if (!synthRef.current && !samplerRef.current) {
       setStatus('Audio is unavailable in this environment.');
       return;
     }
-    await synthRef.current.ensureContextResumed();
+    const resumers: Array<Promise<void>> = [];
+    if (samplerRef.current) resumers.push(samplerRef.current.ensureContextResumed());
+    if (synthRef.current) resumers.push(synthRef.current.ensureContextResumed());
+    await Promise.all(resumers);
     setIsPlaying((prev) => {
       if (prev) return false;
       playStep(0);
