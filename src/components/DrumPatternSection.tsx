@@ -108,6 +108,7 @@ const DrumPatternSection: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [status, setStatus] = useState<string>('Select a pattern to preview or export.');
+  const [midiChannel, setMidiChannel] = useState<'all' | number>('all');
   const intervalRef = useRef<number | null>(null);
   const synthRef = useRef<SynthEngine | null>(null);
   const samplerRef = useRef<DrumSampler | null>(null);
@@ -250,13 +251,14 @@ const DrumPatternSection: React.FC = () => {
       const hits = grid[instrument] ?? [];
       hits.forEach((isHit, index) => {
         if (!isHit) return;
+        const channel = midiChannel === 'all' ? undefined : midiChannel;
         track.addEvent(
           new MidiWriter.NoteEvent({
             pitch: [midiNote],
             tick: index * ticksPerStep,
             duration: 'T' + ticksPerStep,
             velocity: 100,
-            channel: 10,
+            ...(channel ? { channel } : {}),
           }),
         );
       });
@@ -282,13 +284,9 @@ const DrumPatternSection: React.FC = () => {
       <div className="card-body space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="badge badge-outline badge-secondary">{selectedSection || 'Select a section'}</div>
             <h3 className="card-title text-xl font-bold leading-tight">
               {selectedPattern.name}
             </h3>
-            <p className="text-sm text-base-content/70">
-              Page {selectedPattern.page ?? '—'}
-            </p>
           </div>
           <div className="flex flex-col gap-2">
             <label className="form-control w-full max-w-xs">
@@ -318,7 +316,28 @@ const DrumPatternSection: React.FC = () => {
               >
                 {patterns.map((pattern: PocketOperationPattern) => (
                   <option key={pattern.name} value={pattern.name}>
-                    {pattern.name} (p.{pattern.page ?? '—'})
+                    {pattern.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full max-w-xs">
+              <div className="label">
+                <span className="label-text text-sm">MIDI channel</span>
+              </div>
+              <select
+                className="select select-bordered select-sm w-full max-w-xs"
+                value={midiChannel}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === 'all') setMidiChannel('all');
+                  else setMidiChannel(Number(value));
+                }}
+              >
+                <option value="all">All channels (omit)</option>
+                {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
+                  <option key={channel} value={channel}>
+                    Channel {channel}
                   </option>
                 ))}
               </select>
