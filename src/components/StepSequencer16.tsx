@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { SynthEngine } from '../lib/SynthEngine';
+import { DrumSampler } from '../lib/drums/drumSampler';
 
 interface StepSequencer16Props {
   title?: string;
   steps?: number[];
   secondarySteps?: number[];
-  note?: number;
-  secondaryNote?: number;
+  primaryInstrument?: string;
+  secondaryInstrument?: string;
   bpm?: number;
   duration?: number;
   totalSteps?: number;
@@ -33,8 +33,8 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   title,
   steps = [],
   secondarySteps = [],
-  note = 60,
-  secondaryNote = 67,
+  primaryInstrument = 'BD',
+  secondaryInstrument = 'CH',
   bpm = 120,
   duration = 0.06,
   totalSteps = 16,
@@ -50,14 +50,18 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
-  const synthEngineRef = useRef<SynthEngine | null>(null);
+  const samplerRef = useRef<DrumSampler | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      synthEngineRef.current = new SynthEngine();
+      samplerRef.current = new DrumSampler();
     }
   }, []);
+
+  useEffect(() => {
+    samplerRef.current?.preload([primaryInstrument, secondaryInstrument].filter(Boolean));
+  }, [primaryInstrument, secondaryInstrument]);
 
   const stepTime = (60 / bpm) / 4 * 1000; // Time per 16th note in ms
 
@@ -92,17 +96,17 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   useEffect(() => {
     if (isPlaying) {
       if (activeSteps[currentStep]) {
-        synthEngineRef.current?.playNote(note, duration);
+        samplerRef.current?.play(primaryInstrument);
       }
       if (activeSecondarySteps[currentStep]) {
-        synthEngineRef.current?.playNote(secondaryNote, duration);
+        samplerRef.current?.play(secondaryInstrument);
       }
     }
-  }, [currentStep, isPlaying, activeSteps, activeSecondarySteps, note, secondaryNote, duration]);
+  }, [currentStep, isPlaying, activeSteps, activeSecondarySteps, primaryInstrument, secondaryInstrument, duration]);
 
   const handlePlay = async () => {
-    if (synthEngineRef.current) {
-      await synthEngineRef.current.ensureContextResumed();
+    if (samplerRef.current) {
+      await samplerRef.current.ensureContextResumed();
     }
     if (!isPlaying) {
         setCurrentStep(-1); // Reset to start on play
@@ -113,8 +117,10 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   const handleStop = () => {
     setIsPlaying(false);
     setCurrentStep(0);
-    if (synthEngineRef.current) {
-      synthEngineRef.current.stopAll();
+    if (samplerRef.current) {
+      samplerRef.current.dispose();
+      samplerRef.current = new DrumSampler();
+      samplerRef.current.preload([primaryInstrument, secondaryInstrument].filter(Boolean));
     }
   };
 

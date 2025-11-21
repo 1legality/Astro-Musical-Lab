@@ -27,6 +27,7 @@ const GM_DRUMS: Record<string, number> = {
 };
 
 const DISPLAY_ORDER = ['BD', 'SN', 'RS', 'CL', 'CH', 'OH', 'CY', 'CB', 'LT', 'MT', 'HT', 'SH', 'HC', 'LC', 'AC'];
+const SAMPLED_ONLY_INSTRUMENTS = new Set(['LT', 'MT', 'HT']);
 
 const buildGrid = (pattern: PocketOperationPattern): { grid: StepGrid; totalSteps: number } => {
   const totalSteps = pattern.totalSteps || DEFAULT_STEPS;
@@ -175,7 +176,7 @@ const DrumPatternSection: React.FC = () => {
           const note = GM_DRUMS[instrument];
           if (sampler) {
             sampler.play(instrument);
-          } else if (synth && note !== undefined) {
+          } else if (!SAMPLED_ONLY_INSTRUMENTS.has(instrument) && synth && note !== undefined) {
             synth.playNote(note, 0.08);
           }
         }

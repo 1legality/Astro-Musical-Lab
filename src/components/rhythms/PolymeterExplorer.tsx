@@ -102,8 +102,8 @@ const PolymeterExplorer: React.FC = () => {
         title={`Polymeter ${primaryLength} vs ${secondaryLength}`}
         steps={primarySteps}
         secondarySteps={secondarySteps}
-        note={55}
-        secondaryNote={67}
+        primaryInstrument="BD"
+        secondaryInstrument="SN"
         bpm={118}
         totalSteps={gridSteps}
       />

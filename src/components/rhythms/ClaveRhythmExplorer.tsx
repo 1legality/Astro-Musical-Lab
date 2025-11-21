@@ -82,7 +82,7 @@ const ClaveRhythmExplorer: React.FC = () => {
       <StepSequencer16
         title={`${selectedPattern.label} • rotate ${rotation}`}
         steps={rotatedSteps}
-        note={60}
+        primaryInstrument="RS"
         bpm={110}
       />
       <p className="text-sm text-base-content/70">{selectedPattern.description}</p>
