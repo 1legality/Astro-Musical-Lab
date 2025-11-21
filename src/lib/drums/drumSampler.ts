@@ -103,7 +103,7 @@ export class DrumSampler {
     const source = context.createBufferSource();
     const gain = context.createGain();
     source.buffer = buffer;
-    const baseGain = instrument === 'CY' ? 0.5 : instrument === 'AC' ? 0.5 : 0.95;
+    const baseGain = instrument === 'CY' ? 0.15 : instrument === 'AC' ? 0.35 : 0.95;
     gain.gain.value = baseGain;
     source.connect(gain);
     gain.connect(context.destination);
