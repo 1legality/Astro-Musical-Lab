@@ -282,97 +282,27 @@ const DrumPatternSection: React.FC = () => {
   return (
     <div className="card bg-base-200/70">
       <div className="card-body space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
+        <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+          <div className="space-y-4">
             <h3 className="card-title text-xl font-bold leading-tight">
               {selectedPattern.name}
             </h3>
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="form-control w-full max-w-xs">
-              <div className="label">
-                <span className="label-text text-sm">Section</span>
-              </div>
-              <select
-                className="select select-bordered select-sm w-full max-w-xs"
-                value={selectedSection}
-                onChange={(event) => setSelectedSection(event.target.value)}
-              >
-                {sectionsInOrder.map((sectionOption) => (
-                  <option key={sectionOption} value={sectionOption}>
-                    {sectionOption}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="form-control w-full max-w-xs">
-              <div className="label">
-                <span className="label-text text-sm">Pattern</span>
-              </div>
-              <select
-                className="select select-bordered select-sm w-full max-w-xs"
-                value={selectedPattern.name}
-                onChange={(event) => setSelectedName(event.target.value)}
-              >
-                {patterns.map((pattern: PocketOperationPattern) => (
-                  <option key={pattern.name} value={pattern.name}>
-                    {pattern.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="form-control w-full max-w-xs">
-              <div className="label">
-                <span className="label-text text-sm">MIDI channel</span>
-              </div>
-              <select
-                className="select select-bordered select-sm w-full max-w-xs"
-                value={midiChannel}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value === 'all') setMidiChannel('all');
-                  else setMidiChannel(Number(value));
-                }}
-              >
-                <option value="all">All channels (omit)</option>
-                {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
-                  <option key={channel} value={channel}>
-                    Channel {channel}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="form-control w-full max-w-xs">
-              <div className="label">
-                <span className="label-text text-sm">Tempo {bpm} BPM</span>
-              </div>
-              <input
-                type="range"
-                min={70}
-                max={160}
-                value={bpm}
-                onChange={(event) => setBpm(Number(event.target.value))}
-                className="range range-xs range-primary"
-              />
-            </label>
-          </div>
-        </div>
 
-        <div className="space-y-3">
-          {visibleInstruments.map((instrument) => {
-            const hits = grid[instrument] ?? Array.from({ length: totalSteps }, () => false);
-            const label = pocketLegend[instrument] ?? instrument;
-            return (
-              <div key={instrument} className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-base-content/80">
-                  <span className="badge badge-outline badge-sm">{instrument}</span>
-                  <span>{label}</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
+            <div className="space-y-3">
+              {visibleInstruments.map((instrument) => {
+                const hits = grid[instrument] ?? Array.from({ length: totalSteps }, () => false);
+                const label = pocketLegend[instrument] ?? instrument;
+                return (
+                  <div key={instrument} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-base-content/80">
+                      <span className="badge badge-outline badge-sm">{instrument}</span>
+                      <span>{label}</span>
+                    </div>
+                <div className="inline-grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-16 gap-1 justify-start">
                   {hits.map((isHit, index) => {
                     const isCurrent = isPlaying && currentStep === index;
                     const active = isHit;
-                    const base = 'btn btn-xs btn-square font-semibold transition-colors duration-150';
+                    const base = 'btn btn-sm btn-square w-10 h-10 font-semibold transition-colors duration-150';
                     const activeClasses = active
                       ? 'btn-primary text-primary-content'
                       : 'btn-outline btn-neutral text-base-content/60';
@@ -396,20 +326,91 @@ const DrumPatternSection: React.FC = () => {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={handlePlayPause} className="btn btn-primary btn-sm">
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button onClick={handleStop} className="btn btn-error btn-sm">
-            Stop
-          </button>
-          <button onClick={exportMidi} className="btn btn-secondary btn-sm">
-            Export MIDI (GM)
-          </button>
-          <div className="badge badge-outline badge-lg font-mono gap-1">
-            16th = {(60 / Math.max(1, bpm) / 4).toFixed(3)}s
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={handlePlayPause} className="btn btn-primary btn-sm">
+                {isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button onClick={handleStop} className="btn btn-error btn-sm">
+                Stop
+              </button>
+              <button onClick={exportMidi} className="btn btn-secondary btn-sm">
+                Export MIDI (GM)
+              </button>
+              <div className="badge badge-outline badge-lg font-mono gap-1">
+                16th = {(60 / Math.max(1, bpm) / 4).toFixed(3)}s
+              </div>
+              <div className="text-xs text-base-content/70">{status}</div>
+            </div>
           </div>
-          <div className="text-xs text-base-content/70">{status}</div>
+
+          <div className="space-y-3 rounded-box border border-base-300/60 bg-base-100/60 p-4">
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text text-sm">Section</span>
+              </div>
+              <select
+                className="select select-bordered select-sm w-full"
+                value={selectedSection}
+                onChange={(event) => setSelectedSection(event.target.value)}
+              >
+                {sectionsInOrder.map((sectionOption) => (
+                  <option key={sectionOption} value={sectionOption}>
+                    {sectionOption}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text text-sm">Pattern</span>
+              </div>
+              <select
+                className="select select-bordered select-sm w-full"
+                value={selectedPattern.name}
+                onChange={(event) => setSelectedName(event.target.value)}
+              >
+                {patterns.map((pattern: PocketOperationPattern) => (
+                  <option key={pattern.name} value={pattern.name}>
+                    {pattern.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text text-sm">MIDI channel</span>
+              </div>
+              <select
+                className="select select-bordered select-sm w-full"
+                value={midiChannel}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === 'all') setMidiChannel('all');
+                  else setMidiChannel(Number(value));
+                }}
+              >
+                <option value="all">All channels (omit)</option>
+                {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
+                  <option key={channel} value={channel}>
+                    Channel {channel}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text text-sm">Tempo {bpm} BPM</span>
+              </div>
+              <input
+                type="range"
+                min={70}
+                max={160}
+                value={bpm}
+                onChange={(event) => setBpm(Number(event.target.value))}
+                className="range range-xs range-primary"
+              />
+            </label>
+          </div>
         </div>
       </div>
     </div>
