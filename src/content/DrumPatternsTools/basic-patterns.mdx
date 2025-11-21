@@ -1,9 +1,19 @@
 ---
-title: "Basic Drum Patterns"
-description: "A collection of essential drum patterns."
+title: "Drum Pattern Library"
+description: "Browse every pattern across all sections and export as GM MIDI."
 order: 1
 ---
 
-# Basic Drum Patterns
+import DrumPatternLibrary from '../../components/DrumPatternLibrary';
+import { sectionsInOrder } from '../../lib/drums/pocketOperations';
 
-This is a placeholder for the drum patterns section.
+# Drum Pattern Library
+
+All book sections and pages are available below. Pick any pattern, tweak steps, audition,
+and export a General MIDI file (channel 10 kit mapping).
+
+- Patterns stay grouped under their original section headers and page numbers.
+- Playback uses 16th notes; adjust BPM and flip any step before exporting.
+- GM drums: BD 36, SN 38, RS 37, CL 39, CH 42, OH 46, CY 49, CB 56, LT 45, MT 47, HT 50, SH 82, HC 63, LC 64, AC 57.
+
+<DrumPatternLibrary client:only="react" sections={sectionsInOrder} />
