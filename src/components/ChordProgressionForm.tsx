@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { OutputType, InversionType } from '../lib/chords/MidiGenerator';
 import type { FormValues, StatusMessage } from './ChordProgressionGenerator';
 import ChordSyntaxHelpModal from './ChordSyntaxHelpModal';
+import { RangeControl } from './ui/RangeControl';
 
 interface ChordProgressionFormProps {
   values: FormValues;
@@ -193,18 +194,13 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
       </div>
 
       <div className="form-control">
-        <label className="label">
-          <span className="label-text font-semibold">Velocity ({localVelocity})</span>
-        </label>
-        <input
-          type="range"
+        <RangeControl
+          label="Velocity"
+          value={localVelocity}
           min={1}
           max={127}
-          className="range range-primary block w-full"
-          value={localVelocity}
-          onChange={(e) => setLocalVelocity(Number(e.target.value))}
-          onMouseUp={handleVelocityCommit}
-          onTouchEnd={handleVelocityCommit}
+          onChange={setLocalVelocity}
+          className="block w-full"
         />
       </div>
 

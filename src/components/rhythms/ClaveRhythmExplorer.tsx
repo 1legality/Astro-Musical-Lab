@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import StepSequencer16 from '../StepSequencer16';
 import { rotateSteps } from '../../lib/rhythms/patternUtils';
+import { RangeControl } from '../ui/RangeControl';
 
 const CLAVE_PATTERNS = [
   {
@@ -66,18 +67,15 @@ const ClaveRhythmExplorer: React.FC = () => {
             ))}
           </select>
         </label>
-        <label className="form-control w-48">
-          <span className="label-text text-xs uppercase tracking-wide">Rotate</span>
-          <input
-            type="range"
-            min={0}
-            max={15}
-            value={rotation}
-            className="range range-xs"
-            onChange={event => setRotation(Number(event.target.value))}
-          />
-          <span className="text-sm font-mono">{rotation} steps</span>
-        </label>
+        <RangeControl
+          label="Rotate"
+          value={rotation}
+          min={0}
+          max={15}
+          onChange={setRotation}
+          formatValue={(v) => `${v} steps`}
+          className="w-48"
+        />
       </div>
       <StepSequencer16
         title={`${selectedPattern.label} • rotate ${rotation}`}

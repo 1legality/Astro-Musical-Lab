@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import StepSequencer16 from '../StepSequencer16';
 import { clampValue, generateEvenSteps, rotateSteps } from '../../lib/rhythms/patternUtils';
+import { RangeControl } from '../ui/RangeControl';
 
 const GRID_OPTIONS = [8, 12, 16];
 
@@ -41,30 +42,23 @@ const EuclideanRhythmExplorer: React.FC = () => {
             ))}
           </select>
         </label>
-        <label className="form-control w-48">
-          <span className="label-text text-xs uppercase tracking-wide">Active Pulses</span>
-          <input
-            type="range"
-            min={1}
-            max={gridSteps}
-            value={pulses}
-            className="range range-xs mt-1"
-            onChange={event => setPulses(Number(event.target.value))}
-          />
-          <span className="text-xs font-mono text-right text-base-content/70">{pulses}</span>
-        </label>
-        <label className="form-control w-48">
-          <span className="label-text text-xs uppercase tracking-wide">Rotate</span>
-          <input
-            type="range"
-            min={0}
-            max={gridSteps - 1}
-            value={rotation}
-            className="range range-xs mt-1"
-            onChange={event => setRotation(Number(event.target.value))}
-          />
-          <span className="text-xs font-mono text-right text-base-content/70">{rotation} steps</span>
-        </label>
+        <RangeControl
+          label="Active Pulses"
+          value={pulses}
+          min={1}
+          max={gridSteps}
+          onChange={setPulses}
+          className="w-48"
+        />
+        <RangeControl
+          label="Rotate"
+          value={rotation}
+          min={0}
+          max={gridSteps - 1}
+          onChange={setRotation}
+          formatValue={(v) => `${v} steps`}
+          className="w-48"
+        />
       </div>
       <StepSequencer16
         title={`E(${pulses}, ${gridSteps}) • rotate ${rotation}`}

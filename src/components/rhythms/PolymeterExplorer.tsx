@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import StepSequencer16 from '../StepSequencer16';
 import { buildMeterAnchors, rotateSteps } from '../../lib/rhythms/patternUtils';
+import { RangeControl } from '../ui/RangeControl';
 
 const LENGTH_OPTIONS = [3, 4, 5, 6, 7, 8];
 const GRID_OPTIONS = [16, 20];
@@ -73,30 +74,22 @@ const PolymeterExplorer: React.FC = () => {
         </label>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="form-control w-full">
-          <span className="label-text text-xs uppercase tracking-wide mb-1 block">Meter A Rotate</span>
-          <input
-            type="range"
-            min={0}
-            max={gridSteps - 1}
-            value={primaryRotation}
-            className="range range-xs"
-            onChange={event => setPrimaryRotation(Number(event.target.value))}
-          />
-          <span className="text-xs font-mono text-right text-base-content/70 mt-1">{primaryRotation} steps</span>
-        </label>
-        <label className="form-control w-full">
-          <span className="label-text text-xs uppercase tracking-wide mb-1 block">Meter B Rotate</span>
-          <input
-            type="range"
-            min={0}
-            max={gridSteps - 1}
-            value={secondaryRotation}
-            className="range range-xs"
-            onChange={event => setSecondaryRotation(Number(event.target.value))}
-          />
-          <span className="text-xs font-mono text-right text-base-content/70 mt-1">{secondaryRotation} steps</span>
-        </label>
+        <RangeControl
+          label="Meter A Rotate"
+          value={primaryRotation}
+          min={0}
+          max={gridSteps - 1}
+          onChange={setPrimaryRotation}
+          formatValue={(v) => `${v} steps`}
+        />
+        <RangeControl
+          label="Meter B Rotate"
+          value={secondaryRotation}
+          min={0}
+          max={gridSteps - 1}
+          onChange={setSecondaryRotation}
+          formatValue={(v) => `${v} steps`}
+        />
       </div>
       <StepSequencer16
         title={`Polymeter ${primaryLength} vs ${secondaryLength}`}

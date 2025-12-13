@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import StepSequencer16 from '../StepSequencer16';
 import { clampValue, generateEvenSteps, rotateSteps } from '../../lib/rhythms/patternUtils';
+import { RangeControl } from '../ui/RangeControl';
 
 const TOTAL_STEPS = 16;
 
@@ -25,61 +26,39 @@ const PolyrhythmExplorer: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-3 rounded-box border border-base-300/60 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-base-content/70">Upper voice</p>
-          <label className="form-control w-full">
-            <span className="label-text text-xs uppercase tracking-wide mb-1 block">Beats per bar</span>
-            <input
-              type="range"
-              min={1}
-              max={8}
-              value={numerator}
-              className="range range-xs"
-              onChange={event => setNumerator(Number(event.target.value))}
-            />
-            <span className="text-xs font-mono text-right text-base-content/70 mt-1">{numerator}</span>
-          </label>
-          <label className="form-control w-full">
-            <span className="label-text text-xs uppercase tracking-wide mb-1 block">Rotate</span>
-            <input
-              type="range"
-              min={0}
-              max={TOTAL_STEPS - 1}
-              value={numeratorRotation}
-              className="range range-xs"
-              onChange={event => setNumeratorRotation(Number(event.target.value))}
-            />
-            <span className="text-xs font-mono text-right text-base-content/70 mt-1">
-              {numeratorRotation} steps
-            </span>
-          </label>
+          <RangeControl
+            label="Beats per bar"
+            value={numerator}
+            min={1}
+            max={8}
+            onChange={setNumerator}
+          />
+          <RangeControl
+            label="Rotate"
+            value={numeratorRotation}
+            min={0}
+            max={TOTAL_STEPS - 1}
+            onChange={setNumeratorRotation}
+            formatValue={(v) => `${v} steps`}
+          />
         </div>
         <div className="space-y-3 rounded-box border border-base-300/60 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-base-content/70">Lower voice</p>
-          <label className="form-control w-full">
-            <span className="label-text text-xs uppercase tracking-wide mb-1 block">Beats per bar</span>
-            <input
-              type="range"
-              min={1}
-              max={8}
-              value={denominator}
-              className="range range-xs"
-              onChange={event => setDenominator(Number(event.target.value))}
-            />
-            <span className="text-xs font-mono text-right text-base-content/70 mt-1">{denominator}</span>
-          </label>
-          <label className="form-control w-full">
-            <span className="label-text text-xs uppercase tracking-wide mb-1 block">Rotate</span>
-            <input
-              type="range"
-              min={0}
-              max={TOTAL_STEPS - 1}
-              value={denominatorRotation}
-              className="range range-xs"
-              onChange={event => setDenominatorRotation(Number(event.target.value))}
-            />
-            <span className="text-xs font-mono text-right text-base-content/70 mt-1">
-              {denominatorRotation} steps
-            </span>
-          </label>
+          <RangeControl
+            label="Beats per bar"
+            value={denominator}
+            min={1}
+            max={8}
+            onChange={setDenominator}
+          />
+          <RangeControl
+            label="Rotate"
+            value={denominatorRotation}
+            min={0}
+            max={TOTAL_STEPS - 1}
+            onChange={setDenominatorRotation}
+            formatValue={(v) => `${v} steps`}
+          />
         </div>
       </div>
       <StepSequencer16
