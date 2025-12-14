@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { NoteData, ChordGenerationData } from '../lib/chords/MidiGenerator';
 import type { SynthChordPlayer, ActiveNote } from '../lib/chords/SynthChordPlayer';
+import { midiService } from '../lib/chords/MidiService';
 
 interface ChordProgressionPianoRollProps {
   notes: NoteData[];
@@ -11,6 +12,8 @@ interface ChordProgressionPianoRollProps {
   onPlayProgression: () => void;
   onStopProgression: () => void;
   isLooping: boolean;
+  selectedMidiOutputId?: string;
+  midiChannel?: number;
 }
 
 const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
@@ -88,6 +91,8 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
   onPlayProgression,
   onStopProgression,
   isLooping,
+  selectedMidiOutputId,
+  midiChannel = 0,
 }) => {
   const activeChordNotes = useRef<Map<number, ActiveNote[]>>(new Map());
 
@@ -124,6 +129,11 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
 
     const active = synth.startChord(midiNotes);
     activeChordNotes.current.set(index, active);
+
+    if (selectedMidiOutputId) {
+      midiService.sendChordOn(selectedMidiOutputId, midiNotes, 0x7f, midiChannel - 1);
+    }
+
     onChordIndicatorChange(`Playing: ${chord.symbol}`);
   };
 
@@ -132,6 +142,23 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
     if (active && synth) {
       synth.stopNotes(active);
     }
+
+    if (selectedMidiOutputId) {
+      // We need the chord notes again to stop them. 
+      // In a robust system we'd track active midi notes too.
+      // For now, let's re-calculate or assume 'channel 0 all notes off' is not available easily.
+      // The simplest way is to fetch the chord again.
+      const chord = playableChords[index];
+      if (chord) {
+        let midiNotes = notes
+          .filter((note) => note.startTimeTicks === chord.startTimeTicks)
+          .map((note) => note.midiNote);
+        if (midiNotes.length === 0) midiNotes = chord.adjustedVoicing ?? [];
+
+        midiService.sendChordOff(selectedMidiOutputId, midiNotes, midiChannel - 1);
+      }
+    }
+
     activeChordNotes.current.delete(index);
   };
 
