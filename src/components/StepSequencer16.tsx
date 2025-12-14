@@ -109,7 +109,7 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
       await samplerRef.current.ensureContextResumed();
     }
     if (!isPlaying) {
-        setCurrentStep(-1); // Reset to start on play
+      setCurrentStep(-1); // Reset to start on play
     }
     setIsPlaying(!isPlaying);
   };
@@ -126,13 +126,13 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
 
   const toggleStep = (index: number, isSecondary = false) => {
     if (isSecondary) {
-        const newSteps = [...activeSecondarySteps];
-        newSteps[index] = !newSteps[index];
-        setSecondaryActiveSteps(newSteps);
+      const newSteps = [...activeSecondarySteps];
+      newSteps[index] = !newSteps[index];
+      setSecondaryActiveSteps(newSteps);
     } else {
-        const newSteps = [...activeSteps];
-        newSteps[index] = !newSteps[index];
-        setActiveSteps(newSteps);
+      const newSteps = [...activeSteps];
+      newSteps[index] = !newSteps[index];
+      setActiveSteps(newSteps);
     }
   };
 
@@ -154,72 +154,70 @@ const StepSequencer16: React.FC<StepSequencer16Props> = ({
   const groups = Math.ceil(totalSteps / 4);
 
   return (
-    <div className="card bg-base-200/70 w-fit">
-      <div className="card-body space-y-4">
-        {title && (
-          <h3 className="card-title text-sm font-semibold uppercase tracking-wide mt-0">
-            {title}
-          </h3>
-        )}
-        <div className="flex flex-wrap justify-start gap-x-4 gap-y-2">
-          {Array.from({ length: groups }).map((_, groupIndex) => (
-            <div key={groupIndex} className="flex gap-1">
-              {Array.from({ length: 4 }).map((_, itemIndex) => {
-                const i = groupIndex * 4 + itemIndex;
-                if (i >= totalSteps) {
-                  return null;
-                }
-                const isA = activeSteps[i];
-                const isB = activeSecondarySteps[i];
-                const both = isA && isB;
-                const isCurrent = isPlaying && currentStep === i;
+    <div className="space-y-4 w-fit">
+      {title && (
+        <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">
+          {title}
+        </h3>
+      )}
+      <div className="flex flex-wrap justify-start gap-x-4 gap-y-2">
+        {Array.from({ length: groups }).map((_, groupIndex) => (
+          <div key={groupIndex} className="flex gap-1">
+            {Array.from({ length: 4 }).map((_, itemIndex) => {
+              const i = groupIndex * 4 + itemIndex;
+              if (i >= totalSteps) {
+                return null;
+              }
+              const isA = activeSteps[i];
+              const isB = activeSecondarySteps[i];
+              const both = isA && isB;
+              const isCurrent = isPlaying && currentStep === i;
 
-                const baseClasses =
-                  'btn btn-square font-semibold select-none transition-colors duration-150';
-                let colorClasses =
-                  'btn-outline btn-neutral text-base-content/70 border-base-300 bg-base-100/40 hover:text-base-content';
-                if (both) {
-                  colorClasses = 'btn-accent text-accent-content';
-                } else if (isA) {
-                  colorClasses = 'btn-primary text-primary-content';
-                } else if (isB) {
-                  colorClasses = 'btn-warning text-warning-content';
-                }
+              const baseClasses =
+                'btn btn-square font-semibold select-none transition-colors duration-150';
+              let colorClasses =
+                'btn-outline btn-neutral text-base-content/70 border-base-300 bg-base-100/40 hover:text-base-content';
+              if (both) {
+                colorClasses = 'btn-accent text-accent-content';
+              } else if (isA) {
+                colorClasses = 'btn-primary text-primary-content';
+              } else if (isB) {
+                colorClasses = 'btn-warning text-warning-content';
+              }
 
-                const indicator = isCurrent
-                  ? 'ring ring-offset-2 ring-offset-base-200 ring-secondary'
-                  : '';
+              const indicator = isCurrent
+                ? 'ring ring-offset-2 ring-offset-base-200 ring-secondary'
+                : '';
 
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`${baseClasses} ${colorClasses} ${indicator}`}
-                    onClick={() => toggleStep(i)}
-                  >
-                    <span className="text-sm leading-none">{i + 1}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={handlePlay} className="btn btn-primary btn-sm">
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button onClick={handleStop} className="btn btn-error btn-sm">
-            Stop
-          </button>
-          <button
-            onClick={() => setIsLooping(!isLooping)}
-            className={`btn btn-sm ${isLooping ? 'btn-secondary' : 'btn-outline btn-secondary'}`}
-          >
-            {isLooping ? 'Loop On' : 'Loop Off'}
-          </button>
-          <div className="badge badge-outline badge-lg font-mono gap-1">
-            {bpm} BPM <span>•</span> 16th = {(60 / bpm / 4).toFixed(3)}s
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={`${baseClasses} ${colorClasses} ${indicator}`}
+                  onClick={() => toggleStep(i)}
+                >
+                  <span className="text-sm leading-none">{i + 1}</span>
+                </button>
+              );
+            })}
           </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={handlePlay} className="btn btn-primary btn-sm">
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button onClick={handleStop} className="btn btn-error btn-sm">
+          Stop
+        </button>
+        <button
+          onClick={() => setIsLooping(!isLooping)}
+          className={`btn btn-sm ${isLooping ? 'btn-secondary' : 'btn-outline btn-secondary'}`}
+        >
+          {isLooping ? 'Loop On' : 'Loop Off'}
+        </button>
+        <div className="badge badge-outline badge-lg font-mono gap-1">
+          {bpm} BPM <span>•</span> 16th = {(60 / bpm / 4).toFixed(3)}s
         </div>
       </div>
     </div>

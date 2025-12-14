@@ -338,7 +338,7 @@ const DrumPatternSection: React.FC = () => {
   }
 
   return (
-    <div className="card bg-base-200/70">
+    <div className="card bg-base-100 shadow-xl border border-base-200">
       <div className="card-body space-y-4">
         <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div className="space-y-4">
@@ -423,13 +423,13 @@ const DrumPatternSection: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-3 rounded-box border border-base-300/60 bg-base-100/60 p-4">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text text-sm">Section</span>
-              </div>
+          <div className="space-y-3 p-1">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Section</span>
+              </label>
               <select
-                className="select select-bordered select-sm w-full"
+                className="select select-bordered w-full"
                 value={selectedSection}
                 onChange={(event) => setSelectedSection(event.target.value)}
               >
@@ -439,13 +439,13 @@ const DrumPatternSection: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text text-sm"> Pattern</span>
-              </div>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium"> Pattern</span>
+              </label>
               <select
-                className="select select-bordered select-sm w-full"
+                className="select select-bordered w-full"
                 value={selectedPattern.name}
                 onChange={(event) => setSelectedName(event.target.value)}
               >
@@ -455,36 +455,39 @@ const DrumPatternSection: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text text-sm">MIDI channel</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text text-sm font-medium">MIDI channel</span>
+                </label>
+                <select
+                  className="select select-bordered w-full"
+                  value={midiChannel}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === 'all') setMidiChannel('all');
+                    else setMidiChannel(Number(value));
+                  }}
+                >
+                  <option value="all">All channels (omit)</option>
+                  {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
+                    <option key={channel} value={channel}>
+                      Channel {channel}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <select
-                className="select select-bordered select-sm w-full"
-                value={midiChannel}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value === 'all') setMidiChannel('all');
-                  else setMidiChannel(Number(value));
-                }}
-              >
-                <option value="all">All channels (omit)</option>
-                {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
-                  <option key={channel} value={channel}>
-                    Channel {channel}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <RangeControl
-              label="Tempo"
-              value={bpm}
-              min={50}
-              max={240}
-              onChange={setBpm}
-              formatValue={(v) => `${v} BPM`}
-            />
+              <RangeControl
+                label="Tempo"
+                value={bpm}
+                min={50}
+                max={240}
+                onChange={setBpm}
+                formatValue={(v) => `${v} BPM`}
+                className="block w-full"
+              />
+            </div>
             <div className="text-xs text-base-content/50 opacity-80 mt-4">
               <p>Click pads to cycle: Hit → Ghost → Off</p>
             </div>

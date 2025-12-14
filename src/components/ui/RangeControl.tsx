@@ -114,7 +114,7 @@ export const RangeControl: React.FC<RangeControlProps> = ({
 
     return (
         <div className={`form-control w-full ${className}`}>
-            <div className="label pb-1">
+            <div className="label">
                 <span className="label-text text-sm font-medium">{label}</span>
             </div>
             <input
@@ -127,7 +127,7 @@ export const RangeControl: React.FC<RangeControlProps> = ({
                 onChange={handleInputChange}
                 onBlur={handleBlur}
                 onMouseDown={handleMouseDown}
-                className={`input input-sm input-bordered w-full font-mono ${isDragging ? 'cursor-ns-resize' : 'cursor-text'}`}
+                className={`input input-bordered w-full ${isDragging ? 'cursor-ns-resize' : 'cursor-text'}`}
             />
         </div>
     );

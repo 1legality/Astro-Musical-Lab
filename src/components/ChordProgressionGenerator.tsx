@@ -23,7 +23,6 @@ export interface FormValues {
   chordDuration: string;
   outputType: OutputType;
   inversionType: InversionType;
-  velocity: number;
 }
 
 export interface StatusMessage {
@@ -39,7 +38,6 @@ const defaultValues: FormValues = {
   chordDuration: '1',
   outputType: 'chordsAndBass',
   inversionType: 'smooth',
-  velocity: 110,
 };
 
 interface ScheduleItem {
@@ -185,7 +183,7 @@ const ChordProgressionGenerator: React.FC = () => {
     }
     setFormValues((prev) => {
       const next: FormValues = { ...prev };
-      type NumericFormKeys = 'tempo' | 'baseOctave' | 'velocity';
+      type NumericFormKeys = 'tempo' | 'baseOctave';
       const assignNumber = <K extends NumericFormKeys>(key: K, clamp?: (val: number) => number) => {
         const raw = params.get(key as string);
         if (raw === null) return;
@@ -211,7 +209,6 @@ const ChordProgressionGenerator: React.FC = () => {
       assignString('inversionType');
       assignNumber('tempo', (value) => Math.min(300, Math.max(20, value)));
       assignNumber('baseOctave', (value) => Math.min(6, Math.max(1, value)));
-      assignNumber('velocity', (value) => Math.min(127, Math.max(1, Math.round(value))));
       return next;
     });
     setUrlReady(true);
@@ -235,7 +232,6 @@ const ChordProgressionGenerator: React.FC = () => {
       safeSet('chordDuration');
       safeSet('outputType');
       safeSet('inversionType');
-      safeSet('velocity');
 
       const query = params.toString();
       const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
@@ -295,7 +291,7 @@ const ChordProgressionGenerator: React.FC = () => {
           baseOctave: formValues.baseOctave,
           chordDurationStr: formValues.chordDuration,
           tempo: formValues.tempo,
-          velocity: formValues.velocity,
+          velocity: 110,
         };
 
         const result = midiGenerator.generate(generatorOptions);
@@ -390,7 +386,7 @@ const ChordProgressionGenerator: React.FC = () => {
         baseOctave: formValues.baseOctave,
         chordDurationStr: formValues.chordDuration,
         tempo: formValues.tempo,
-        velocity: formValues.velocity,
+        velocity: 110,
       };
       const blob = await exportProgressionToPdf(options);
       const name = (options.outputFileName?.replace(/\.mid$/, '') || 'progression') + '.pdf';

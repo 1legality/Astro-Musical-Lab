@@ -24,86 +24,96 @@ const PolymeterExplorer: React.FC = () => {
   }, [secondaryLength, secondaryRotation, gridSteps]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4">
-        <label className="form-control w-32">
-          <span className="label-text text-xs uppercase tracking-wide">Grid Size</span>
-          <select
-            className="select select-bordered select-sm mt-1"
-            value={gridSteps}
-            onChange={event => {
-              setGridSteps(Number(event.target.value));
-              setPrimaryRotation(0);
-              setSecondaryRotation(0);
-            }}
-          >
-            {GRID_OPTIONS.map(size => (
-              <option key={size} value={size}>
-                {size} steps
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="form-control w-44">
-          <span className="label-text text-xs uppercase tracking-wide">Meter A length</span>
-          <select
-            className="select select-bordered select-sm mt-1"
-            value={primaryLength}
-            onChange={event => setPrimaryLength(Number(event.target.value))}
-          >
-            {LENGTH_OPTIONS.map(length => (
-              <option key={length} value={length}>
-                {length} steps
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="form-control w-44">
-          <span className="label-text text-xs uppercase tracking-wide">Meter B length</span>
-          <select
-            className="select select-bordered select-sm mt-1"
-            value={secondaryLength}
-            onChange={event => setSecondaryLength(Number(event.target.value))}
-          >
-            {LENGTH_OPTIONS.map(length => (
-              <option key={length} value={length}>
-                {length} steps
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <RangeControl
-          label="Meter A Rotate"
-          value={primaryRotation}
-          min={0}
-          max={gridSteps - 1}
-          onChange={setPrimaryRotation}
-          formatValue={(v) => `${v} steps`}
+    <div className="card bg-base-100 shadow-xl border border-base-200">
+      <div className="card-body space-y-4">
+        <StepSequencer16
+          title={`Polymeter ${primaryLength} vs ${secondaryLength}`}
+          steps={primarySteps}
+          secondarySteps={secondarySteps}
+          primaryInstrument="BD"
+          secondaryInstrument="SN"
+          bpm={118}
+          totalSteps={gridSteps}
         />
-        <RangeControl
-          label="Meter B Rotate"
-          value={secondaryRotation}
-          min={0}
-          max={gridSteps - 1}
-          onChange={setSecondaryRotation}
-          formatValue={(v) => `${v} steps`}
-        />
+        <div className="space-y-6 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Grid Size</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={gridSteps}
+                onChange={event => {
+                  setGridSteps(Number(event.target.value));
+                  setPrimaryRotation(0);
+                  setSecondaryRotation(0);
+                }}
+              >
+                {GRID_OPTIONS.map(size => (
+                  <option key={size} value={size}>
+                    {size} steps
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Meter A length</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={primaryLength}
+                onChange={event => setPrimaryLength(Number(event.target.value))}
+              >
+                {LENGTH_OPTIONS.map(length => (
+                  <option key={length} value={length}>
+                    {length} steps
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Meter B length</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={secondaryLength}
+                onChange={event => setSecondaryLength(Number(event.target.value))}
+              >
+                {LENGTH_OPTIONS.map(length => (
+                  <option key={length} value={length}>
+                    {length} steps
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <RangeControl
+              label="Meter A Rotate"
+              value={primaryRotation}
+              min={0}
+              max={gridSteps - 1}
+              onChange={setPrimaryRotation}
+              formatValue={(v) => `${v} steps`}
+            />
+            <RangeControl
+              label="Meter B Rotate"
+              value={secondaryRotation}
+              min={0}
+              max={gridSteps - 1}
+              onChange={setSecondaryRotation}
+              formatValue={(v) => `${v} steps`}
+            />
+          </div>
+          <p className="text-sm text-base-content/70">
+            Each loop keeps its own meter length while sharing the same tempo. Changing the grid lets you zoom in on
+            different realignment points; offset either loop to create evolving metric tension without touching the BPM.
+          </p>
+        </div>
       </div>
-      <StepSequencer16
-        title={`Polymeter ${primaryLength} vs ${secondaryLength}`}
-        steps={primarySteps}
-        secondarySteps={secondarySteps}
-        primaryInstrument="BD"
-        secondaryInstrument="SN"
-        bpm={118}
-        totalSteps={gridSteps}
-      />
-      <p className="text-sm text-base-content/70">
-        Each loop keeps its own meter length while sharing the same tempo. Changing the grid lets you zoom in on
-        different realignment points; offset either loop to create evolving metric tension without touching the BPM.
-      </p>
     </div>
   );
 };

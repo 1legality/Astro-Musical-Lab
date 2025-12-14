@@ -51,39 +51,46 @@ const ClaveRhythmExplorer: React.FC = () => {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4">
-        <label className="form-control w-48">
-          <span className="label-text text-xs uppercase tracking-wide">Pattern</span>
-          <select
-            className="select select-bordered select-sm"
-            value={patternId}
-            onChange={event => setPatternId(event.target.value)}
-          >
-            {CLAVE_PATTERNS.map(pattern => (
-              <option key={pattern.id} value={pattern.id}>
-                {pattern.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <RangeControl
-          label="Rotate"
-          value={rotation}
-          min={0}
-          max={15}
-          onChange={setRotation}
-          formatValue={(v) => `${v} steps`}
-          className="w-48"
+    <div className="card bg-base-100 shadow-xl border border-base-200">
+      <div className="card-body space-y-4">
+        <StepSequencer16
+          title={`${selectedPattern.label} • rotate ${rotation}`}
+          steps={rotatedSteps}
+          primaryInstrument="RS"
+          bpm={110}
         />
+
+        <div className="space-y-6 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">Pattern</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={patternId}
+                onChange={event => setPatternId(event.target.value)}
+              >
+                {CLAVE_PATTERNS.map(pattern => (
+                  <option key={pattern.id} value={pattern.id}>
+                    {pattern.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <RangeControl
+              label="Rotate"
+              value={rotation}
+              min={0}
+              max={15}
+              onChange={setRotation}
+              formatValue={(v) => `${v} steps`}
+              className="w-full"
+            />
+          </div>
+          <p className="text-sm text-base-content/70">{selectedPattern.description}</p>
+        </div>
       </div>
-      <StepSequencer16
-        title={`${selectedPattern.label} • rotate ${rotation}`}
-        steps={rotatedSteps}
-        primaryInstrument="RS"
-        bpm={110}
-      />
-      <p className="text-sm text-base-content/70">{selectedPattern.description}</p>
     </div>
   );
 };
