@@ -26,6 +26,19 @@ export const RangeControl: React.FC<RangeControlProps> = ({
     // Track interaction state to distinguish click vs drag without stale closures
     const interactionRef = React.useRef<{ startY: number; startVal: number; hasMoved: boolean } | null>(null);
 
+    // Keep refs to props to ensure event handlers are stable and don't trigger cleanup
+    const onChangeRef = React.useRef(onChange);
+    const minRef = React.useRef(min);
+    const maxRef = React.useRef(max);
+    const stepRef = React.useRef(step);
+
+    React.useLayoutEffect(() => {
+        onChangeRef.current = onChange;
+        minRef.current = min;
+        maxRef.current = max;
+        stepRef.current = step;
+    });
+
     const handleDecrease = () => {
         const newValue = Math.max(min, value - step);
         onChange(newValue);
@@ -49,25 +62,11 @@ export const RangeControl: React.FC<RangeControlProps> = ({
         }
     };
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLInputElement>) => {
-        // Only left click
-        if (e.button !== 0) return;
-
-        // Prevent default browser text selection
-        e.preventDefault();
-
-        interactionRef.current = { startY: e.clientY, startVal: value, hasMoved: false };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-    };
-
+    // Stable handlers for window events
     const handleMouseMove = React.useCallback((e: MouseEvent) => {
         if (!interactionRef.current) return;
 
         const deltaY = interactionRef.current.startY - e.clientY;
-
-        // Threshold to start dragging (avoid accidental drags on clicks)
         if (!interactionRef.current.hasMoved && Math.abs(deltaY) < 5) return;
 
         if (!interactionRef.current.hasMoved) {
@@ -79,32 +78,43 @@ export const RangeControl: React.FC<RangeControlProps> = ({
 
         e.preventDefault();
 
-        // Sensitivity: 5 pixels per step
-        const steps = Math.round(deltaY / 5);
-        const newValue = Math.max(min, Math.min(max, interactionRef.current.startVal + (steps * step)));
+        const currentStep = stepRef.current;
+        const currentMin = minRef.current;
+        const currentMax = maxRef.current;
 
-        onChange(newValue);
-    }, [min, max, onChange, step]);
+        const steps = Math.round(deltaY / 5);
+        // Use logic relative to startVal
+        let nextVal = interactionRef.current.startVal + (steps * currentStep);
+        nextVal = Math.max(currentMin, Math.min(currentMax, nextVal));
+
+        onChangeRef.current(nextVal);
+    }, []);
 
     const handleMouseUp = React.useCallback(() => {
-        // If we didn't move, treat it as a click -> Focus and Select All
         if (interactionRef.current && !interactionRef.current.hasMoved) {
             if (inputRef.current) {
                 inputRef.current.focus();
                 inputRef.current.select();
             }
         }
-
         interactionRef.current = null;
         setIsDragging(false);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
     }, [handleMouseMove]);
 
-    // Clean up listeners if component unmounts while dragging
+    const handleMouseDown = (e: React.MouseEvent<HTMLInputElement>) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        interactionRef.current = { startY: e.clientY, startVal: value, hasMoved: false };
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
+
+    // Cleanup ensures listeners are removed if component unmounts mid-drag
+    // Because handlers are stable, this only runs on mount/unmount logic effectively
     React.useEffect(() => {
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);

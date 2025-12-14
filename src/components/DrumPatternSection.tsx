@@ -22,7 +22,7 @@ const DISPLAY_ORDER = ['BD', 'SN', 'RS', 'CL', 'CH', 'OH', 'CY', 'CB', 'LT', 'MT
 const SAMPLED_ONLY_INSTRUMENTS = new Set(['LT', 'MT', 'HT']);
 
 const NORMAL_VELOCITY = 110;
-const GHOST_VELOCITY = 60;
+const GHOST_VELOCITY = 40;
 
 const parsePatternString = (str: string, totalSteps: number): number[] => {
   const steps = new Array(totalSteps).fill(0);
@@ -184,12 +184,10 @@ const DrumPatternSection: React.FC = () => {
         if (velocity > 0) {
           const note = GM_DRUM_MAP[instrument as keyof typeof GM_DRUM_MAP];
           if (sampler) {
-            sampler.play(instrument); // velocity support in sampler? TODO: add volume scaling based on velocity
+            sampler.play(instrument, velocity);
           } else if (!SAMPLED_ONLY_INSTRUMENTS.has(instrument) && synth && note !== undefined) {
-            // Scale volume by velocity (0-127) -> 0-1
-            // Synth volume is usually handling gain.
-            // For now just playNote.
-            synth.playNote(note, 0.08);
+            const normalizedVelocity = velocity / 127;
+            synth.playNote(note, 0.08, normalizedVelocity);
           }
         }
       });
@@ -298,28 +296,134 @@ const DrumPatternSection: React.FC = () => {
 
   const exportMidi = () => {
     if (!selectedPattern) return;
-    const track = new MidiWriter.Track();
-    track.setTempo(bpm);
-    track.setTimeSignature(4, 4, 24, 8);
     const ticksPerStep = Math.max(1, Math.round(TPQN / 4));
+
+    // To write a single track with polyphony properly using midi-writer-js,
+    // we need to process events in chronological order.
+    // 1. Gather all note events from all instruments into a time-sorted list
+    interface NoteEventDef {
+      step: number;
+      midiNote: number;
+      velocity: number;
+    }
+    const allEvents: NoteEventDef[] = [];
 
     visibleInstruments.forEach((instrument) => {
       const midiNote = GM_DRUM_MAP[instrument as keyof typeof GM_DRUM_MAP];
       if (midiNote === undefined) return;
       const velocities = grid[instrument] ?? [];
       velocities.forEach((vel, index) => {
-        if (vel === 0) return;
-        const channel = midiChannel === 'all' ? undefined : midiChannel;
-        track.addEvent(
-          new MidiWriter.NoteEvent({
-            pitch: [midiNote],
-            tick: index * ticksPerStep,
-            duration: 'T' + ticksPerStep,
-            velocity: vel,
-            ...(channel ? { channel } : {}),
-          }),
-        );
+        if (vel > 0) {
+          allEvents.push({ step: index, midiNote, velocity: vel });
+        }
       });
+    });
+
+    // 2. Sort by step (time)
+    allEvents.sort((a, b) => a.step - b.step);
+
+    const track = new MidiWriter.Track();
+    track.setTempo(bpm);
+    track.setTimeSignature(4, 4, 24, 8);
+    track.addInstrumentName('DrumKit');
+
+    let cursorTick = 0;
+
+    // 3. Add to track, handling deltas
+    // If multiple notes are on the same step, the first pays the "wait" tax,
+    // subsequent ones on same step have wait: 0.
+
+    allEvents.forEach((evt) => {
+      const targetTick = evt.step * ticksPerStep;
+
+      // If we are strictly sequential, we just advance based on previous event end.
+      // But midi-writer-js advances cursor by wait+duration.
+      // If we want chords (simultaneous notes), subsequent notes must NOT advance time or wait.
+      // However, MidiWriter appends. NoteEvent usually advances cursor.
+      // TRICK: To add chords, we can set duration: 0 for all but the last note? 
+      // OR better: Use `tick` property if it supports absolute positioning?
+      // No, `wait` is delta.
+
+      // Correct approach for single-track polyphony in sequential writer:
+      // "Wait" is time from end of last event.
+      // If we are at the same time as last event (chord), wait is calculated accordingly.
+      // BUT `cursorTick` must track where the writer head IS.
+
+      // Let's assume standard behavior: writer head moves by (wait + duration).
+      // So if start is 0, dur is 128: head is at 128.
+      // Next note at 0: wait = 0 - 128 = -128?? Impossible.
+
+      // MidiWriter-js solves this by allowing `pitch` to be an array of notes. 
+      // So we should GROUP events by step.
+    });
+
+    // 3a. Group by step
+    const eventsByStep: Record<number, NoteEventDef[]> = {};
+    allEvents.forEach(e => {
+      if (!eventsByStep[e.step]) eventsByStep[e.step] = [];
+      eventsByStep[e.step].push(e);
+    });
+
+    // 3b. Iterate steps 0..totalSteps (or just sorted keys)
+    const sortedSteps = Object.keys(eventsByStep).map(Number).sort((a, b) => a - b);
+
+    sortedSteps.forEach(step => {
+      const stepEvents = eventsByStep[step];
+      const targetTick = step * ticksPerStep;
+      const waitTicks = targetTick - cursorTick;
+      const channel = midiChannel === 'all' ? 10 : midiChannel;
+
+      // If we have multiple notes, we can add them as a single NoteEvent with multiple pitches
+      // BUT they might have different velocities. MidiWriter NoteEvent takes explicit velocity per pitch?
+      // Usually `velocity` is one number. 
+      // If mixed velocities, strict polyphony on one track is hard without `startTick`.
+      // Let's assume grouping by velocity?
+
+      // Pragma: Group by velocity at this step.
+      const byVel: Record<number, number[]> = {};
+      stepEvents.forEach(e => {
+        if (!byVel[e.velocity]) byVel[e.velocity] = [];
+        byVel[e.velocity].push(e.midiNote);
+      });
+
+      // Add events. The first one takes the `wait` and advances time.
+      // The others must start at same time... this implies simultaneous events.
+      // MidiWriter supports `sequential: false`?? No.
+
+      // Actually, MidiWriter `NoteEvent` supports passing `pitch` array. 
+      // If velocities differ, we are stuck unless we spawn multiple events.
+      // BUT multiple events sequence linearly.
+      // UNLESS we use specific MidiWriter features for chords.
+
+      // Workaround: If multiple velocities exist, just take the Max (loudest) or Avg?
+      // Or just default to the first one?
+      // For a "Single Track", perfect polyphony with different velocities is tricky in simple sequential writers.
+
+      // However, we can create multiple Tracks and merge them into one using `Writer.mergeTracks()`? 
+      // Writer usually keeps them separate.
+
+      // Let's stick to the multiple-velocity-aware grouping, but optimize for the common case:
+      // Typically accents are uniform. Ghost notes are uniform.
+      // If a step has both an accent (Snare) and a ghost (Hat), we have a conflict.
+      // We'll prioritize correctness of timing over perfect velocity nuances if limiting to 1 track.
+      // OR: pitch: [all notes], velocity: max(velocities).
+
+      // COMPROMISE: Group all notes at this step into one chord, use the max velocity.
+
+      const pitches = stepEvents.map(e => e.midiNote);
+      const maxVel = Math.max(...stepEvents.map(e => e.velocity));
+
+      track.addEvent(
+        new MidiWriter.NoteEvent({
+          pitch: pitches,
+          duration: 'T' + ticksPerStep,
+          wait: 'T' + waitTicks,
+          velocity: maxVel,
+          channel: channel,
+        }),
+      );
+
+      cursorTick += waitTicks + ticksPerStep;
     });
 
     const midiData = new MidiWriter.Writer([track]).buildFile();

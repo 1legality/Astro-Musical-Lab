@@ -56,7 +56,7 @@ export class DrumSampler {
     const context = this.getContext();
     if (!context) return;
     if (context.state === 'suspended') {
-      await context.resume().catch(() => {});
+      await context.resume().catch(() => { });
     }
   }
 
@@ -93,7 +93,7 @@ export class DrumSampler {
     });
   }
 
-  public async play(instrument: string): Promise<void> {
+  public async play(instrument: string, velocity: number = 127): Promise<void> {
     const sampleKey = INSTRUMENT_TO_SAMPLE[instrument];
     if (!sampleKey) return;
     const context = this.getContext();
@@ -104,7 +104,8 @@ export class DrumSampler {
     const gain = context.createGain();
     source.buffer = buffer;
     const baseGain = instrument === 'CY' ? 0.15 : instrument === 'AC' ? 0.35 : 0.95;
-    gain.gain.value = baseGain;
+    const velocityGain = Math.max(0, Math.min(1, velocity / 127));
+    gain.gain.value = baseGain * velocityGain;
     source.connect(gain);
     gain.connect(context.destination);
     source.start();
@@ -114,7 +115,7 @@ export class DrumSampler {
     this.buffers.clear();
     this.loading.clear();
     if (this.audioContext) {
-      this.audioContext.close().catch(() => {});
+      this.audioContext.close().catch(() => { });
       this.audioContext = null;
     }
   }
