@@ -156,7 +156,7 @@ export class SynthEngine {
 
 
 
-    public playNote(midiNote: number, durationSeconds: number = 0.15): void {
+    public playNote(midiNote: number, durationSeconds: number = 0.15, velocity: number = 1.0): void {
         if (!this.initAudioContext() || !this.audioContext || !this.mainGainNode) {
             return;
         }
@@ -179,8 +179,9 @@ export class SynthEngine {
 
         // --- Amplitude Envelope ---
         const noteGain = this.audioContext.createGain();
+        const peakGain = 0.8 * Math.max(0, Math.min(1, velocity));
         noteGain.gain.setValueAtTime(0, now);
-        noteGain.gain.linearRampToValueAtTime(0.8, now + 0.005); // Fast attack
+        noteGain.gain.linearRampToValueAtTime(peakGain, now + 0.005); // Fast attack
         noteGain.gain.exponentialRampToValueAtTime(0.001, now + durationSeconds); // Decay
 
         // --- Connect the audio graph ---

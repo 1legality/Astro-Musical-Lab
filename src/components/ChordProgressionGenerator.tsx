@@ -14,6 +14,7 @@ import {
 import { SynthChordPlayer, type ActiveNote } from '../lib/chords/SynthChordPlayer';
 import { VALID_DURATION_CODES, generateValidChordPattern } from '../lib/chords/ValidationUtils';
 import { exportProgressionToPdf } from '../lib/chords/PrintProgression';
+import { midiService } from '../lib/chords/MidiService';
 
 export interface FormValues {
   progression: string;
@@ -23,7 +24,6 @@ export interface FormValues {
   chordDuration: string;
   outputType: OutputType;
   inversionType: InversionType;
-  velocity: number;
 }
 
 export interface StatusMessage {
@@ -39,7 +39,6 @@ const defaultValues: FormValues = {
   chordDuration: '1',
   outputType: 'chordsAndBass',
   inversionType: 'smooth',
-  velocity: 110,
 };
 
 interface ScheduleItem {
@@ -163,6 +162,12 @@ const ChordProgressionGenerator: React.FC = () => {
   const [isLooping, setIsLooping] = useState(false);
   const [urlReady, setUrlReady] = useState(false);
 
+  // MIDI Controller State
+  const [midiOutputs, setMidiOutputs] = useState<MIDIOutput[]>([]);
+  const [selectedMidiOutputId, setSelectedMidiOutputId] = useState<string>('');
+  const [selectedMidiChannel, setSelectedMidiChannel] = useState<number>(0);
+  const [midiError, setMidiError] = useState<string | null>(null);
+
   const playbackTimeoutRef = useRef<number | null>(null);
   const playbackNotesRef = useRef<ActiveNote[] | null>(null);
   const playbackIndexRef = useRef(0);
@@ -171,10 +176,41 @@ const ChordProgressionGenerator: React.FC = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     synthRef.current = new SynthChordPlayer(0.45);
+
+    // Initialize MIDI
+    midiService.initialize()
+      .then(() => {
+        const outputs = midiService.getOutputs();
+        setMidiOutputs(outputs);
+        if (outputs.length > 0) {
+          setSelectedMidiOutputId(outputs[0].id);
+        }
+      })
+      .catch((err) => {
+        console.warn('MIDI initialization failed', err);
+        setMidiError('MIDI access denied or not supported.');
+      });
+
     return () => {
       synthRef.current?.stopNotes();
     };
   }, []);
+
+  const refreshMidiOutputs = useCallback(async () => {
+    try {
+      // Re-initialize to ensure we get fresh access if needed, or just get outputs
+      await midiService.initialize();
+      const outputs = midiService.getOutputs();
+      setMidiOutputs(outputs);
+      if (outputs.length > 0 && !selectedMidiOutputId) {
+        setSelectedMidiOutputId(outputs[0].id);
+      }
+      setMidiError(null);
+    } catch (err) {
+      console.warn('MIDI refresh failed', err);
+      setMidiError('Could not refresh MIDI devices.');
+    }
+  }, [selectedMidiOutputId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -185,7 +221,7 @@ const ChordProgressionGenerator: React.FC = () => {
     }
     setFormValues((prev) => {
       const next: FormValues = { ...prev };
-      type NumericFormKeys = 'tempo' | 'baseOctave' | 'velocity';
+      type NumericFormKeys = 'tempo' | 'baseOctave';
       const assignNumber = <K extends NumericFormKeys>(key: K, clamp?: (val: number) => number) => {
         const raw = params.get(key as string);
         if (raw === null) return;
@@ -211,7 +247,6 @@ const ChordProgressionGenerator: React.FC = () => {
       assignString('inversionType');
       assignNumber('tempo', (value) => Math.min(300, Math.max(20, value)));
       assignNumber('baseOctave', (value) => Math.min(6, Math.max(1, value)));
-      assignNumber('velocity', (value) => Math.min(127, Math.max(1, Math.round(value))));
       return next;
     });
     setUrlReady(true);
@@ -235,7 +270,6 @@ const ChordProgressionGenerator: React.FC = () => {
       safeSet('chordDuration');
       safeSet('outputType');
       safeSet('inversionType');
-      safeSet('velocity');
 
       const query = params.toString();
       const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
@@ -295,7 +329,7 @@ const ChordProgressionGenerator: React.FC = () => {
           baseOctave: formValues.baseOctave,
           chordDurationStr: formValues.chordDuration,
           tempo: formValues.tempo,
-          velocity: formValues.velocity,
+          velocity: 110,
         };
 
         const result = midiGenerator.generate(generatorOptions);
@@ -390,7 +424,7 @@ const ChordProgressionGenerator: React.FC = () => {
         baseOctave: formValues.baseOctave,
         chordDurationStr: formValues.chordDuration,
         tempo: formValues.tempo,
-        velocity: formValues.velocity,
+        velocity: 110,
       };
       const blob = await exportProgressionToPdf(options);
       const name = (options.outputFileName?.replace(/\.mid$/, '') || 'progression') + '.pdf';
@@ -435,6 +469,11 @@ const ChordProgressionGenerator: React.FC = () => {
 
       if (item.notes.length > 0) {
         playbackNotesRef.current = synthRef.current.startChord(item.notes);
+
+        if (selectedMidiOutputId) {
+          midiService.sendChordOn(selectedMidiOutputId, item.notes, 0x7f, selectedMidiChannel - 1);
+        }
+
         setChordIndicator(`Playing: ${item.label}`);
       } else {
         setChordIndicator('Rest');
@@ -442,6 +481,11 @@ const ChordProgressionGenerator: React.FC = () => {
 
       const nextDelay = Math.max(10, item.durationSec * 1000);
       playbackTimeoutRef.current = window.setTimeout(() => {
+        // Stop MIDI notes before advancing (simulating quick note off, though ideally duration based)
+        if (selectedMidiOutputId && item.notes.length > 0) {
+          midiService.sendChordOff(selectedMidiOutputId, item.notes, selectedMidiChannel - 1);
+        }
+
         playbackIndexRef.current = (playbackIndexRef.current + 1) % schedule.length;
         advance();
       }, nextDelay);
@@ -481,7 +525,63 @@ const ChordProgressionGenerator: React.FC = () => {
               onPlayProgression={startLoop}
               onStopProgression={stopLoop}
               isLooping={isLooping}
+              selectedMidiOutputId={selectedMidiOutputId}
+              midiChannel={selectedMidiChannel}
             />
+            {/* MIDI Output Selection */}
+            <div className="space-y-2">
+              <div className="flex items-end gap-2">
+                <div className="form-control flex-1">
+                  <label className="label">
+                    <span className="label-text text-sm font-medium">External MIDI Output</span>
+                  </label>
+                  <select
+                    className="select select-bordered select-sm w-full"
+                    value={selectedMidiOutputId}
+                    onChange={(e) => setSelectedMidiOutputId(e.target.value)}
+                    disabled={midiOutputs.length === 0}
+                  >
+                    <option value="">None (Browser Audio Only)</option>
+                    {midiOutputs.map(output => (
+                      <option key={output.id} value={output.id}>{output.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-control w-24">
+                  <label className="label">
+                    <span className="label-text text-sm font-medium">Channel</span>
+                  </label>
+                  <select
+                    className="select select-bordered select-sm w-full"
+                    value={selectedMidiChannel}
+                    onChange={(e) => setSelectedMidiChannel(Number(e.target.value))}
+                    disabled={!selectedMidiOutputId}
+                  >
+                    <option value={0}>Omni (All)</option>
+                    {Array.from({ length: 16 }, (_, i) => i + 1).map(ch => (
+                      <option key={ch} value={ch}>{ch}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  className="btn btn-sm btn-ghost border-base-300"
+                  onClick={refreshMidiOutputs}
+                  title="Refresh MIDI Devices"
+                >
+                  ↻
+                </button>
+              </div>
+
+              {midiError && <div className="text-xs text-error">{midiError}</div>}
+              {!midiError && midiOutputs.length === 0 && <div className="text-xs text-base-content/50">No MIDI devices found. Connect your device and click refresh.</div>}
+
+              <div className="rounded-md bg-base-200 p-3 text-xs text-base-content/70">
+                <strong>Tip:</strong> Select a MIDI device to test chords on your hardware synthesizers in real-time or to record sequences directly into an external sequencer (like the Oxi One).
+              </div>
+            </div>
+
             <div className="text-xs text-base-content/70">
               Preview updates automatically whenever you change the form. The loop playback respects the current output
               type so you can focus on chords, bass, or both.

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { OutputType, InversionType } from '../lib/chords/MidiGenerator';
 import type { FormValues, StatusMessage } from './ChordProgressionGenerator';
 import ChordSyntaxHelpModal from './ChordSyntaxHelpModal';
+import { RangeControl } from './ui/RangeControl';
 
 interface ChordProgressionFormProps {
   values: FormValues;
@@ -57,23 +58,12 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
   hasPreview,
 }) => {
   const [showInfo, setShowInfo] = useState(false);
-  const [localVelocity, setLocalVelocity] = useState(values.velocity);
-
-  useEffect(() => {
-    setLocalVelocity(values.velocity);
-  }, [values.velocity]);
-
-  const handleVelocityCommit = () => {
-    if (localVelocity !== values.velocity) {
-      onValueChange('velocity', localVelocity);
-    }
-  };
 
   return (
     <div className="space-y-4">
       <div className="form-control">
         <label className="label">
-          <span className="label-text font-semibold">Chord Progression</span>
+          <span className="label-text text-sm font-medium">Chord Progression</span>
         </label>
         <input
           type="text"
@@ -100,7 +90,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Output filename (.mid)</span>
+            <span className="label-text text-sm font-medium">Output filename (.mid)</span>
           </label>
           <input
             type="text"
@@ -111,21 +101,18 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
           />
         </div>
         <div className="form-control">
-          <label className="label">
-            <span className="label-text font-semibold">Tempo (BPM)</span>
-          </label>
-          <input
-            type="number"
+          <RangeControl
+            label="Tempo (BPM)"
+            value={values.tempo}
             min={20}
             max={300}
-            className="input input-bordered w-full"
-            value={values.tempo}
-            onChange={(event) => onValueChange('tempo', Number(event.target.value))}
+            onChange={(val) => onValueChange('tempo', val)}
+            className="block w-full"
           />
         </div>
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Base Octave</span>
+            <span className="label-text text-sm font-medium">Base Octave</span>
           </label>
           <select
             className="select select-bordered w-full"
@@ -141,7 +128,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
         </div>
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Default chord duration (bars)</span>
+            <span className="label-text text-sm font-medium">Default chord duration (bars)</span>
           </label>
           <select
             className="select select-bordered w-full"
@@ -160,7 +147,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Output type</span>
+            <span className="label-text text-sm font-medium">Output type</span>
           </label>
           <select
             className="select select-bordered w-full"
@@ -176,7 +163,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
         </div>
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-semibold">Chord inversion</span>
+            <span className="label-text text-sm font-medium">Chord inversion</span>
           </label>
           <select
             className="select select-bordered w-full"
@@ -192,21 +179,7 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
         </div>
       </div>
 
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text font-semibold">Velocity ({localVelocity})</span>
-        </label>
-        <input
-          type="range"
-          min={1}
-          max={127}
-          className="range range-primary block w-full"
-          value={localVelocity}
-          onChange={(e) => setLocalVelocity(Number(e.target.value))}
-          onMouseUp={handleVelocityCommit}
-          onTouchEnd={handleVelocityCommit}
-        />
-      </div>
+
 
       <div className="space-y-2">
         <button

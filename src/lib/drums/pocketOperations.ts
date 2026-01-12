@@ -1,75 +1,49 @@
-import { parse } from 'yaml';
-import rawYaml from '../../content/drum_patterns/pocket_operations_full.yaml?raw';
+import drumPatterns from '../../data/drum_patterns.json';
 
 export const DEFAULT_STEPS = 16;
 
 export interface PocketOperationPattern {
   name: string;
   section: string;
-  page?: number;
-  instruments: Record<string, number[]>;
+  instruments: Record<string, string>; // now string patterns like "x...x..."
   totalSteps: number;
 }
 
-interface PocketOperationsFile {
-  legend?: Record<string, string>;
-  patterns?: Array<{
-    name: string;
-    section?: string;
-    page?: number;
-    instruments: Record<string, number[]>;
-  }>;
-  total_patterns?: number;
-}
+const {
+  GM_DRUM_MAP,
+  DRUM_SECTIONS,
+  DRUM_SECTION_LABELS,
+  DRUM_PATTERN_TEMPLATES
+} = drumPatterns;
 
-const normalizeSteps = (steps: number[] | undefined, totalSteps = DEFAULT_STEPS): number[] => {
-  if (!Array.isArray(steps)) return [];
-  const clamped = steps
-    .map((step) => {
-      const normalized = Math.round(step);
-      if (normalized < 1) return 1;
-      if (normalized > totalSteps) return totalSteps;
-      return normalized;
-    })
-    .filter((value) => Number.isFinite(value));
-  return Array.from(new Set(clamped)).sort((a, b) => a - b);
+export const pocketLegend = {
+  // Basic inferred legend
+  "BD": "Bass Drum",
+  "SN": "Snare",
+  "CH": "Closed Hat",
+  "OH": "Open Hat",
+  "CL": "Clap",
+  "RS": "Rim Shot",
+  "CB": "Cowbell",
+  "CY": "Cymbal",
+  "LT": "Low Tom",
+  "MT": "Mid Tom",
+  "HT": "High Tom",
+  "SH": "Shaker",
+  "HC": "High Conga",
+  "LC": "Low Conga",
+  "AC": "Accented Conga"
 };
 
-const parseFile = (): { legend: Record<string, string>; patterns: PocketOperationPattern[]; sectionsInOrder: string[] } => {
-  let parsed: PocketOperationsFile | undefined;
-  try {
-    parsed = parse(rawYaml) as PocketOperationsFile;
-  } catch (error) {
-    console.error('Unable to parse pocket_operations_full.yaml', error);
-  }
+// Flatten the template map to an array
+export const pocketOperationPatterns: PocketOperationPattern[] = Object.entries(DRUM_PATTERN_TEMPLATES).map(([name, data]: [string, any]) => {
+  return {
+    name: name,
+    section: data.section,
+    instruments: data.instruments,
+    totalSteps: 16 // Default for now, could be inferred from string length
+  };
+});
 
-  const legend = parsed?.legend ?? {};
-  const seenSections = new Set<string>();
-  const sectionsInOrder: string[] = [];
-
-  const patterns = (parsed?.patterns ?? []).map((pattern) => {
-    const totalSteps = DEFAULT_STEPS;
-    const instruments: Record<string, number[]> = {};
-    (Object.entries(pattern.instruments || {}) as Array<[string, number[]]>).forEach(([key, values]) => {
-      instruments[key] = normalizeSteps(values, totalSteps);
-    });
-    const section = pattern.section ?? 'Uncategorized';
-    if (!seenSections.has(section)) {
-      seenSections.add(section);
-      sectionsInOrder.push(section);
-    }
-    return {
-      name: pattern.name,
-      section,
-      page: pattern.page,
-      instruments,
-      totalSteps,
-    };
-  });
-
-  return { legend, patterns, sectionsInOrder };
-};
-
-const { legend: pocketLegend, patterns: pocketOperationPatterns, sectionsInOrder } = parseFile();
-
-export { pocketLegend, pocketOperationPatterns, sectionsInOrder };
+export const sectionsInOrder = DRUM_SECTIONS;
+export { GM_DRUM_MAP, DRUM_SECTION_LABELS };
