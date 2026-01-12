@@ -238,6 +238,12 @@ const PulseGeneratorExplorer: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    // Reset grid position when switching patterns so playback starts at step 1
+    stepRef.current = 0;
+    setCurrentStep(0);
+  }, [patternIndex]);
+
   const clearScheduled = () => {
     timeoutRefs.current.forEach(timeoutId => window.clearTimeout(timeoutId));
     timeoutRefs.current = [];
@@ -291,7 +297,23 @@ const PulseGeneratorExplorer: React.FC = () => {
       }
       clearScheduled();
     };
-  }, [arpMode, bpm, heldNotes, isPlaying, pattern, rateIndex, swing]);
+    // Restart interval whenever any parameter that affects playback changes so closures stay fresh.
+  }, [
+    accentVelocity,
+    arpMode,
+    bpm,
+    fixedVelocity,
+    gate,
+    ghostVelocity,
+    heldNotes,
+    humanize,
+    isPlaying,
+    octaveShift,
+    pattern,
+    rateIndex,
+    swing,
+    velocityMode,
+  ]);
 
   useEffect(() => {
     if (heldNotes.length === 0) {
@@ -342,7 +364,7 @@ const PulseGeneratorExplorer: React.FC = () => {
     synthRef.current.setVolume(volume);
 
     const shifted = notesToPlay.map(noteData => clamp(noteData.note + (octaveShift * 12), 0, 127));
-    synthRef.current.playChord(shifted, durationSeconds);
+    synthRef.current.playChord(shifted, durationSeconds, velocities);
   };
 
   const toggleNote = (note: number) => {
@@ -380,6 +402,38 @@ const PulseGeneratorExplorer: React.FC = () => {
       .sort((a, b) => a.note - b.note)
       .map(note => `${NOTE_LABELS[note.note % 12]}${Math.floor(note.note / 12) - 1}`);
   }, [heldNotes]);
+
+  const velocityPreview = useMemo(() => {
+    const values: number[] = Array.from({ length: pattern.len }, () => 0);
+    pattern.steps.forEach(step => {
+      values[step.position] = calculateVelocity(
+        inputVelocity,
+        step.velocityScale,
+        step.accent,
+        step.position,
+        pattern.len,
+        velocityMode,
+        fixedVelocity,
+        accentVelocity,
+        ghostVelocity,
+        0, // keep preview stable; ignore humanize randomness
+      );
+    });
+    return values;
+  }, [accentVelocity, fixedVelocity, ghostVelocity, inputVelocity, pattern, velocityMode]);
+
+  const velocityChartWidth = useMemo(() => Math.max(1, pattern.len - 1) * 12, [pattern.len]);
+
+  const velocityPolyline = useMemo(() => {
+    if (velocityPreview.length === 0) return '';
+    return velocityPreview
+      .map((val, idx) => {
+        const x = (idx / Math.max(1, pattern.len - 1)) * velocityChartWidth;
+        const y = 80 - (val / 127) * 80;
+        return `${x},${y}`;
+      })
+      .join(' ');
+  }, [pattern.len, velocityChartWidth, velocityPreview]);
 
   const stepGroups = Math.ceil(pattern.len / 4);
   const accentSteps = new Set(pattern.steps.filter(step => step.accent).map(step => step.position));
@@ -645,6 +699,51 @@ const PulseGeneratorExplorer: React.FC = () => {
         </div>
 
         <div className="space-y-4">
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Velocity Shape</h3>
+              <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-100/60 p-3">
+                <svg viewBox={`0 0 ${velocityChartWidth} 80`} className="w-full h-24">
+                  <defs>
+                    <linearGradient id="velStroke" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="hsl(var(--p))" stopOpacity="0.95" />
+                      <stop offset="100%" stopColor="hsl(var(--p))" stopOpacity="0.35" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="100%" height="100%" fill="transparent" stroke="none" />
+                  <polyline
+                    points={velocityPolyline}
+                    fill="none"
+                    stroke="url(#velStroke)"
+                    strokeWidth="3"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  {velocityPreview.map((val, idx) => {
+                    const x = (idx / Math.max(1, pattern.len - 1)) * velocityChartWidth;
+                    const y = 80 - (val / 127) * 80;
+                    const isAccent = pattern.steps.some(step => step.position === idx && step.accent);
+                    const isGhost = pattern.steps.some(step => step.position === idx && !step.accent);
+                    const fill = isAccent ? 'hsl(var(--p))' : isGhost ? 'hsl(var(--wa))' : 'hsl(var(--bc))';
+                    return (
+                      <circle
+                        key={idx}
+                        cx={x}
+                        cy={y}
+                        r={isAccent ? 4 : 3}
+                        fill={fill}
+                        opacity="0.9"
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="text-xs text-base-content/70 mt-1">
+                  Per-step velocity after shaping (accent/ghost/fixed/ramp). Blue = accent, amber = ghost.
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="card bg-base-200/70">
             <div className="card-body space-y-3">
               <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Pattern Grid</h3>

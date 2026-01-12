@@ -69,7 +69,7 @@ export class SynthChordPlayer {
      * @param midiNotes - An array of MIDI note numbers for the chord.
      * @param durationSeconds - How long the chord should play in seconds.
      */
-    public playChord(midiNotes: number[], durationSeconds: number = 1.5): void {
+    public playChord(midiNotes: number[], durationSeconds: number = 1.5, velocities?: number[]): void {
         if (!this.audioContext || !this.mainGainNode) {
             console.error("AudioContext not available. Cannot play chord.");
             return;
@@ -78,8 +78,11 @@ export class SynthChordPlayer {
         const now = this.audioContext.currentTime;
         const detuneAmount = 6; // Cents (adjust for desired thickness)
 
-        midiNotes.forEach(note => {
+        midiNotes.forEach((note, index) => {
             const baseFrequency = this.midiNoteToFrequency(note);
+            const velNorm = velocities && typeof velocities[index] === 'number'
+                ? Math.min(1, Math.max(0, velocities[index]! / 127))
+                : 1;
 
             // --- Oscillators ---
             const osc1 = this.audioContext!.createOscillator();
@@ -94,8 +97,8 @@ export class SynthChordPlayer {
 
             // --- Gain Node per Note (for envelope) ---
             const noteGain = this.audioContext!.createGain();
-            const initialGain = 0.4; // Set volume to 50%
-            noteGain.gain.setValueAtTime(initialGain, now); // Sustain at 50% volume
+            const initialGain = Math.max(0.02, Math.min(0.6, 0.4 * velNorm)); // scale by velocity
+            noteGain.gain.setValueAtTime(initialGain, now);
 
             // --- Connections ---
             osc1.connect(noteGain);
