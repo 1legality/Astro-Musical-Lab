@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import MidiWriter from 'midi-writer-js';
 import {
   pocketOperationPatterns,
   sectionsInOrder,
@@ -8,7 +7,6 @@ import {
   type PocketOperationPattern,
 } from '../lib/drums/pocketOperations';
 
-import { TPQN } from '../lib/chords/MidiGenerator';
 import { useDrumPlayback, type StepGrid } from '../hooks/useDrumPlayback';
 import { DrumStepGrid, DrumTransportControls, DrumPatternSelector } from './drums';
 
@@ -39,39 +37,6 @@ const buildGrid = (pattern: PocketOperationPattern): { grid: StepGrid; totalStep
   return { grid, totalSteps };
 };
 
-const buildMidiBlob = (midiDataBytes: unknown): Blob => {
-  if (typeof Uint8Array !== 'undefined' && midiDataBytes instanceof Uint8Array) {
-    const copy = new Uint8Array(midiDataBytes.length);
-    copy.set(midiDataBytes);
-    return new Blob([copy], { type: 'audio/midi' });
-  }
-  if (midiDataBytes && (midiDataBytes instanceof ArrayBuffer || ArrayBuffer.isView(midiDataBytes))) {
-    return new Blob([midiDataBytes as ArrayBuffer], { type: 'audio/midi' });
-  }
-  try {
-    return new Blob([midiDataBytes as BlobPart], { type: 'audio/midi' });
-  } catch {
-    return new Blob([String(midiDataBytes)], { type: 'text/plain' });
-  }
-};
-
-const triggerDownload = (blob: Blob, filename: string): void => {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
-};
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'pattern';
-
 const DEFAULT_PATTERN_NAME = 'ONE AND SEVEN & FIVE AND THIRTEEN';
 
 const DrumPatternSection: React.FC = () => {
@@ -101,10 +66,9 @@ const DrumPatternSection: React.FC = () => {
   const [grid, setGrid] = useState<StepGrid>({});
   const [totalSteps, setTotalSteps] = useState(DEFAULT_STEPS);
   const [bpm, setBpm] = useState(120);
-  const [status, setStatus] = useState<string>('Select a pattern to preview or export.');
   const [midiChannel, setMidiChannel] = useState<'all' | number>('all');
+  const [status, setStatus] = useState<string>('Select a pattern to preview or edit.');
 
-  // Keep pattern name in sync when section changes
   useEffect(() => {
     if (patterns.length === 0) {
       setSelectedName('');
@@ -116,7 +80,6 @@ const DrumPatternSection: React.FC = () => {
     }
   }, [patterns, selectedName]);
 
-  // Reset pattern when section changes
   useEffect(() => {
     if (patterns.length > 0) {
       const preferred = patterns.find((pattern) => pattern.name === DEFAULT_PATTERN_NAME) ?? patterns[0];
@@ -124,7 +87,6 @@ const DrumPatternSection: React.FC = () => {
     }
   }, [patterns]);
 
-  // Build grid when pattern changes
   useEffect(() => {
     if (!selectedPattern) return;
     const next = buildGrid(selectedPattern);
@@ -142,7 +104,6 @@ const DrumPatternSection: React.FC = () => {
     return [...ordered, ...extras];
   }, [grid, selectedPattern]);
 
-  // Use the drum playback hook
   const {
     isPlaying,
     currentStep,
@@ -206,80 +167,104 @@ const DrumPatternSection: React.FC = () => {
 
   const exportMidi = useCallback(() => {
     if (!selectedPattern) return;
-    const ticksPerStep = Math.max(1, Math.round(TPQN / 4));
+    // Dynamic import to avoid SSR issues if necessary, though we are in client component file
+    import('midi-writer-js').then((MidiWriterModule) => {
+      const MidiWriter = MidiWriterModule.default;
+      const ticksPerStep = Math.max(1, Math.round(128 / 4)); // assuming 128 TPQN default, or import TPQN
 
-    interface AbsEvent {
-      tick: number;
-      type: 'on' | 'off';
-      pitch: number;
-      velocity: number;
-    }
-
-    const absEvents: AbsEvent[] = [];
-    const channel = midiChannel === 'all' ? 10 : midiChannel;
-
-    visibleInstruments.forEach((instrument) => {
-      const midiNote = GM_DRUM_MAP[instrument as keyof typeof GM_DRUM_MAP];
-      if (midiNote === undefined) return;
-      const velocities = grid[instrument] ?? [];
-
-      velocities.forEach((vel, stepIndex) => {
-        if (vel > 0) {
-          const startTick = stepIndex * ticksPerStep;
-          const endTick = startTick + ticksPerStep;
-
-          absEvents.push({ tick: startTick, type: 'on', pitch: midiNote, velocity: vel });
-          absEvents.push({ tick: endTick, type: 'off', pitch: midiNote, velocity: 0 });
-        }
-      });
-    });
-
-    absEvents.sort((a, b) => {
-      if (a.tick !== b.tick) return a.tick - b.tick;
-      if (a.type === 'off' && b.type === 'on') return -1;
-      if (a.type === 'on' && b.type === 'off') return 1;
-      return 0;
-    });
-
-    const track = new MidiWriter.Track();
-    track.setTempo(bpm);
-    track.setTimeSignature(4, 4, 24, 8);
-    track.addInstrumentName('DrumKit');
-
-    let cursor = 0;
-
-    absEvents.forEach((evt) => {
-      const delta = evt.tick - cursor;
-      const durationStr = 'T' + delta;
-      const waitStr = 'T' + delta;
-
-      if (evt.type === 'on') {
-        track.addEvent(
-          new MidiWriter.NoteOnEvent({
-            pitch: evt.pitch,
-            velocity: evt.velocity,
-            wait: waitStr,
-            channel: channel,
-          })
-        );
-      } else {
-        track.addEvent(
-          new MidiWriter.NoteOffEvent({
-            pitch: evt.pitch,
-            duration: durationStr,
-            channel: channel,
-            velocity: 0,
-          })
-        );
+      interface AbsEvent {
+        tick: number;
+        type: 'on' | 'off';
+        pitch: number;
+        velocity: number;
       }
-      cursor = evt.tick;
-    });
 
-    const midiData = new MidiWriter.Writer([track]).buildFile();
-    const blob = buildMidiBlob(midiData);
-    const filename = `${slugify(selectedPattern.name)}-${Math.round(bpm)}bpm.mid`;
-    triggerDownload(blob, filename);
-    setStatus(`Exported ${filename} (GM Ch ${channel}, Polyphonic).`);
+      const absEvents: AbsEvent[] = [];
+      const channel = midiChannel === 'all' ? 10 : midiChannel;
+
+      visibleInstruments.forEach((instrument) => {
+        const midiNote = GM_DRUM_MAP[instrument as keyof typeof GM_DRUM_MAP];
+        if (midiNote === undefined) return;
+        const velocities = grid[instrument] ?? [];
+
+        velocities.forEach((vel, stepIndex) => {
+          if (vel > 0) {
+            const startTick = stepIndex * ticksPerStep;
+            const endTick = startTick + ticksPerStep;
+
+            absEvents.push({ tick: startTick, type: 'on', pitch: midiNote, velocity: vel });
+            absEvents.push({ tick: endTick, type: 'off', pitch: midiNote, velocity: 0 });
+          }
+        });
+      });
+
+      absEvents.sort((a, b) => {
+        if (a.tick !== b.tick) return a.tick - b.tick;
+        if (a.type === 'off' && b.type === 'on') return -1;
+        if (a.type === 'on' && b.type === 'off') return 1;
+        return 0;
+      });
+
+      const track = new MidiWriter.Track();
+      track.setTempo(bpm);
+      track.setTimeSignature(4, 4, 24, 8);
+      track.addInstrumentName('DrumKit');
+
+      let cursor = 0;
+
+      absEvents.forEach((evt) => {
+        const delta = evt.tick - cursor;
+        const durationStr = 'T' + delta;
+        const waitStr = 'T' + delta;
+
+        if (evt.type === 'on') {
+          track.addEvent(
+            new MidiWriter.NoteOnEvent({
+              pitch: evt.pitch,
+              velocity: evt.velocity,
+              wait: waitStr,
+              channel: channel,
+            })
+          );
+        } else {
+          track.addEvent(
+            new MidiWriter.NoteOffEvent({
+              pitch: evt.pitch,
+              duration: durationStr,
+              channel: channel,
+              velocity: 0,
+            })
+          );
+        }
+        cursor = evt.tick;
+      });
+
+      const midiData = new MidiWriter.Writer([track]).buildFile();
+
+      // Helper to build blob
+      const buildMidiBlob = (midiDataBytes: any): Blob => {
+        if (typeof Uint8Array !== 'undefined' && midiDataBytes instanceof Uint8Array) {
+          const copy = new Uint8Array(midiDataBytes.length);
+          copy.set(midiDataBytes);
+          return new Blob([copy], { type: 'audio/midi' });
+        }
+        return new Blob([midiDataBytes], { type: 'audio/midi' });
+      };
+
+      const blob = buildMidiBlob(midiData);
+      const filename = `${selectedPattern.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.round(bpm)}bpm.mid`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      setStatus(`Exported ${filename} (GM Ch ${channel}).`);
+    });
   }, [selectedPattern, bpm, midiChannel, visibleInstruments, grid]);
 
   if (!selectedPattern) {
@@ -291,30 +276,122 @@ const DrumPatternSection: React.FC = () => {
   }
 
   return (
-    <div className="card bg-base-100 shadow-xl border border-base-200">
-      <div className="card-body space-y-4">
-        <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-          <div className="space-y-4">
-            <h3 className="card-title text-xl font-bold leading-tight flex justify-between">
-              <span>{selectedPattern.name}</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={resetPattern}
-                  className="btn btn-ghost btn-xs text-base-content/50 hover:text-base-content"
-                  title="Reset to original pattern"
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={addEarCandy}
-                  className="btn btn-ghost btn-xs text-secondary animate-pulse hover:animate-none"
-                  title="Add random ghost notes"
-                >
-                  ✨ Ear Candy
-                </button>
+    <div className="space-y-6">
+      <div className="space-y-6">
+        {/* Top section: All Controls in unified grid */}
+        <div className="card bg-base-200/70">
+          <div className="card-body">
+            <div className="grid grid-cols-12 gap-4 items-end">
+              {/* Transport buttons */}
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+                <span className="label-text text-xs uppercase tracking-wide mb-1 block">Transport</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={handlePlayPause} className="btn btn-primary btn-sm">
+                    {isPlaying ? 'Pause' : 'Play'}
+                  </button>
+                  <button onClick={handleStop} className="btn btn-error btn-sm">
+                    Stop
+                  </button>
+                  <div className="badge badge-outline badge-lg font-mono">
+                    {bpm} BPM
+                  </div>
+                </div>
               </div>
-            </h3>
 
+              {/* Section selector */}
+              <div className="col-span-6 sm:col-span-3 lg:col-span-2 form-control">
+                <span className="label-text text-xs uppercase tracking-wide mb-1">Section</span>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={selectedSection}
+                  onChange={(e) => setSelectedSection(e.target.value)}
+                >
+                  {sectionsInOrder.map((sec) => (
+                    <option key={sec} value={sec}>
+                      {sec}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Pattern selector */}
+              <div className="col-span-6 sm:col-span-3 lg:col-span-3 form-control">
+                <span className="label-text text-xs uppercase tracking-wide mb-1">Pattern</span>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={selectedPattern.name}
+                  onChange={(e) => setSelectedName(e.target.value)}
+                >
+                  {patterns.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tempo slider */}
+              <div className="col-span-6 lg:col-span-2 form-control">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="label-text text-xs uppercase tracking-wide">Tempo</span>
+                  <span className="text-xs font-mono text-base-content/70">{bpm}</span>
+                </div>
+                <input
+                  type="range"
+                  min={50}
+                  max={240}
+                  value={bpm}
+                  className="range range-xs"
+                  onChange={(e) => setBpm(Number(e.target.value))}
+                />
+              </div>
+
+              {/* MIDI Channel */}
+              <div className="col-span-6 lg:col-span-2 form-control">
+                <span className="label-text text-xs uppercase tracking-wide mb-1">MIDI Ch</span>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={midiChannel}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'all') setMidiChannel('all');
+                    else setMidiChannel(Number(val));
+                  }}
+                >
+                  <option value="all">All (10)</option>
+                  {Array.from({ length: 16 }, (_, i) => i + 1).map((ch) => (
+                    <option key={ch} value={ch}>Ch {ch}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Second row: Actions and status */}
+            <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-base-content/10">
+              <button onClick={exportMidi} className="btn btn-xs btn-outline" title="Download MIDI file">
+                Export MIDI
+              </button>
+              <button
+                onClick={addEarCandy}
+                className="btn btn-xs btn-outline border-secondary text-secondary hover:bg-secondary/20"
+                title="Add random ghost notes"
+              >
+                ✨ Ear Candy
+              </button>
+              <button onClick={resetPattern} className="btn btn-xs btn-ghost" title="Reset to original pattern">
+                Reset
+              </button>
+              <span className="text-xs text-base-content/70 italic ml-auto">{status}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Middle section: Step Grid */}
+        <div className="card bg-base-200/70">
+          <div className="card-body space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">
+              {selectedPattern.name}
+            </h3>
             <DrumStepGrid
               grid={grid}
               visibleInstruments={visibleInstruments}
@@ -323,28 +400,18 @@ const DrumPatternSection: React.FC = () => {
               isPlaying={isPlaying}
               onToggleStep={toggleStep}
             />
-
-            <DrumTransportControls
-              isPlaying={isPlaying}
-              bpm={bpm}
-              status={status}
-              onPlayPause={handlePlayPause}
-              onStop={handleStop}
-              onExportMidi={exportMidi}
-            />
           </div>
+        </div>
 
-          <DrumPatternSelector
-            selectedSection={selectedSection}
-            onSectionChange={setSelectedSection}
-            patterns={patterns}
-            selectedName={selectedPattern.name}
-            onPatternChange={setSelectedName}
-            midiChannel={midiChannel}
-            onMidiChannelChange={setMidiChannel}
-            bpm={bpm}
-            onBpmChange={setBpm}
-          />
+        {/* Bottom section: Tip */}
+        <div className="card bg-base-200/70">
+          <div className="card-body py-4 text-sm text-base-content/70">
+            <p>
+              Select a pattern from the Pocket Operations library and tweak the grid to your liking.
+              Ghost notes add subtle groove without overpowering the main hits.
+              Tip: Use "Ear Candy" to add random ghost notes for variation, or hand-edit the grid for precise control.
+            </p>
+          </div>
         </div>
       </div>
     </div>

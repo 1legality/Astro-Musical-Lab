@@ -1,5 +1,4 @@
 import React from 'react';
-import { RangeControl } from '../ui/RangeControl';
 import {
     sectionsInOrder,
     DRUM_SECTION_LABELS,
@@ -28,7 +27,8 @@ interface DrumPatternSelectorProps {
 }
 
 /**
- * Selector controls for drum patterns: section, pattern, MIDI channel, and tempo.
+ * Selector controls for drum patterns: section, pattern, and tempo.
+ * Styled to match Pulse Generator aesthetic with pixel-perfect precision.
  */
 const DrumPatternSelector: React.FC<DrumPatternSelectorProps> = ({
     selectedSection,
@@ -42,13 +42,12 @@ const DrumPatternSelector: React.FC<DrumPatternSelectorProps> = ({
     onBpmChange,
 }) => {
     return (
-        <div className="space-y-3 p-1">
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm font-medium">Section</span>
-                </label>
+        <div className="grid grid-cols-12 gap-x-4 gap-y-2 align-bottom">
+            {/* Row 1: Section and Pattern */}
+            <div className="col-span-12 lg:col-span-6 form-control">
+                <span className="label-text text-xs uppercase tracking-wide mb-1">Section</span>
                 <select
-                    className="select select-bordered w-full"
+                    className="select select-bordered select-sm w-full"
                     value={selectedSection}
                     onChange={(event) => onSectionChange(event.target.value)}
                 >
@@ -60,12 +59,10 @@ const DrumPatternSelector: React.FC<DrumPatternSelectorProps> = ({
                 </select>
             </div>
 
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm font-medium">Pattern</span>
-                </label>
+            <div className="col-span-12 lg:col-span-6 form-control">
+                <span className="label-text text-xs uppercase tracking-wide mb-1">Pattern</span>
                 <select
-                    className="select select-bordered w-full"
+                    className="select select-bordered select-sm w-full"
                     value={selectedName}
                     onChange={(event) => onPatternChange(event.target.value)}
                 >
@@ -77,42 +74,40 @@ const DrumPatternSelector: React.FC<DrumPatternSelectorProps> = ({
                 </select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="form-control">
-                    <label className="label">
-                        <span className="label-text text-sm font-medium">MIDI channel</span>
-                    </label>
-                    <select
-                        className="select select-bordered w-full"
-                        value={midiChannel}
-                        onChange={(event) => {
-                            const value = event.target.value;
-                            if (value === 'all') onMidiChannelChange('all');
-                            else onMidiChannelChange(Number(value));
-                        }}
-                    >
-                        <option value="all">All channels (omit)</option>
-                        {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
-                            <option key={channel} value={channel}>
-                                Channel {channel}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <RangeControl
-                    label="Tempo"
-                    value={bpm}
-                    min={50}
-                    max={240}
-                    onChange={onBpmChange}
-                    formatValue={(v) => `${v} BPM`}
-                    className="block w-full"
-                />
+            {/* Row 2: MIDI Channel and Tempo */}
+            <div className="col-span-6 lg:col-span-4 form-control">
+                <span className="label-text text-xs uppercase tracking-wide mb-1">MIDI Ch (Out)</span>
+                <select
+                    className="select select-bordered select-sm w-full"
+                    value={midiChannel}
+                    onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === 'all') onMidiChannelChange('all');
+                        else onMidiChannelChange(Number(value));
+                    }}
+                >
+                    <option value="all">All (10)</option>
+                    {Array.from({ length: 16 }, (_, i) => i + 1).map((channel) => (
+                        <option key={channel} value={channel}>
+                            Ch {channel}
+                        </option>
+                    ))}
+                </select>
             </div>
 
-            <div className="text-xs text-base-content/50 opacity-80 mt-4">
-                <p>Click pads to cycle: Hit → Ghost → Off</p>
+            <div className="col-span-6 lg:col-span-8 form-control">
+                <div className="flex justify-between items-center mb-1">
+                    <span className="label-text text-xs uppercase tracking-wide">Tempo</span>
+                    <span className="text-xs font-mono text-base-content/70">{bpm} BPM</span>
+                </div>
+                <input
+                    type="range"
+                    min={50}
+                    max={240}
+                    value={bpm}
+                    className="range range-xs"
+                    onChange={(event) => onBpmChange(Number(event.target.value))}
+                />
             </div>
         </div>
     );

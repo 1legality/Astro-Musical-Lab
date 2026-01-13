@@ -19,8 +19,8 @@ interface ChordProgressionPianoRollProps {
 const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
   if (!notes || notes.length === 0) {
     return (
-      <div className="h-64 w-full bg-base-200 flex items-center">
-        <p className="text-base-content/70 w-full text-center">No notes to display</p>
+      <div className="h-24 w-full bg-base-100/60 rounded-xl flex items-center justify-center">
+        <p className="text-xs text-base-content/50">No notes to display</p>
       </div>
     );
   }
@@ -39,23 +39,8 @@ const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
   const midiRange = maxMidi - minMidi + 1;
   if (maxTimeTicks <= 0) maxTimeTicks = 1;
 
-  const gridLines = [];
-  for (let midi = minMidi; midi <= maxMidi; midi++) {
-    if (midi % 12 === 0) {
-      const y = ((midi - minMidi + 0.5) / midiRange) * 100;
-      gridLines.push(
-        <div
-          key={`grid-${midi}`}
-          className="absolute w-full border-t border-base-content/10"
-          style={{ bottom: `${y}%`, left: 0 }}
-        />
-      );
-    }
-  }
-
   return (
-    <div className="relative h-64 w-full bg-base-200 overflow-hidden">
-      {gridLines}
+    <div className="relative h-24 w-full bg-base-100/60 rounded-xl overflow-hidden border border-base-300">
       {notes.map((note, index) => {
         const left = (note.startTimeTicks / maxTimeTicks) * 100;
         const width = (note.durationTicks / maxTimeTicks) * 100;
@@ -65,14 +50,14 @@ const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
         return (
           <div
             key={index}
-            className="absolute bg-primary"
+            className="absolute bg-primary rounded-sm"
             style={{
               left: `${left}%`,
               width: `${width}%`,
               bottom: `${bottom}%`,
               height: `${height}%`,
-              minWidth: '1px',
-              minHeight: '1px',
+              minWidth: '2px',
+              minHeight: '2px',
             }}
           />
         );
@@ -144,10 +129,6 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
     }
 
     if (selectedMidiOutputId) {
-      // We need the chord notes again to stop them. 
-      // In a robust system we'd track active midi notes too.
-      // For now, let's re-calculate or assume 'channel 0 all notes off' is not available easily.
-      // The simplest way is to fetch the chord again.
       const chord = playableChords[index];
       if (chord) {
         let midiNotes = notes
@@ -163,28 +144,22 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
   };
 
   return (
-    <div className="space-y-5">
-      <header className="space-y-1">
-        <h3 className="card-title text-lg font-semibold">Piano Roll Preview</h3>
-        <p className="text-sm text-base-content/70">
-          Visual representation of the generated notes and quick-access chord audition buttons.
-        </p>
-      </header>
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Piano Roll Preview</h3>
 
-      <div className="rounded-box border border-base-300 shadow-inner overflow-hidden">
-        <PianoRollDisplay notes={notes} />
-      </div>
+      <PianoRollDisplay notes={notes} />
 
-      <div className="rounded-box border border-base-300/70 bg-base-100/70 p-3 space-y-2">
+      <div className="space-y-2">
+        <span className="label-text text-xs uppercase tracking-wide">Chord Buttons</span>
         <div className="flex flex-wrap gap-2">
           {playableChords.length === 0 && (
-            <span className="text-sm text-base-content/70">Generate a progression to get chord buttons.</span>
+            <span className="text-xs text-base-content/50">Enter a progression to see chord buttons.</span>
           )}
           {playableChords.map((chord, index) => (
             <button
               type="button"
               key={`${chord.symbol}-${index}`}
-              className="btn btn-outline btn-sm"
+              className="btn btn-xs btn-outline"
               onMouseDown={() => startPreviewChord(index)}
               onMouseUp={() => stopPreviewChord(index)}
               onMouseLeave={() => stopPreviewChord(index)}
@@ -205,27 +180,29 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
             </button>
           ))}
         </div>
-        <p className="text-sm text-base-content/70">{chordIndicator}</p>
+        <p className="text-xs text-base-content/50">{chordIndicator}</p>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
         <button
           type="button"
-          className="btn btn-primary w-full sm:w-auto"
+          className="btn btn-primary btn-sm"
           onClick={onPlayProgression}
-          disabled={isLooping}
+          disabled={isLooping || playableChords.length === 0}
         >
-          Play Progression (Loop)
+          {isLooping ? 'Playing...' : 'Play Loop'}
         </button>
         <button
           type="button"
-          className="btn btn-outline btn-error w-full sm:w-auto"
+          className="btn btn-error btn-sm"
           onClick={onStopProgression}
           disabled={!isLooping}
         >
           Stop
         </button>
-        <span className="badge badge-outline">Loop status: {isLooping ? 'Playing' : 'Idle'}</span>
+        <span className="badge badge-outline badge-lg font-mono">
+          {isLooping ? 'Playing' : 'Idle'}
+        </span>
       </div>
     </div>
   );

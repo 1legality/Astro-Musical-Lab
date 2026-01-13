@@ -111,13 +111,12 @@ const ChordProgressionGenerator: React.FC = () => {
   const [formValues, setFormValues] = useState<FormValues>(defaultValues);
   const [status, setStatus] = useState<StatusMessage>({
     tone: 'muted',
-    message: 'Enter a progression and tweak the options to begin.',
+    message: 'Enter a progression to begin.',
   });
   const [generation, setGeneration] = useState<MidiGenerationResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [urlReady, setUrlReady] = useState(false);
 
-  // Use the MIDI output hook
   const {
     outputs: midiOutputs,
     selectedId: selectedMidiOutputId,
@@ -128,7 +127,6 @@ const ChordProgressionGenerator: React.FC = () => {
     refresh: refreshMidiOutputs,
   } = useMidiOutput();
 
-  // Use the chord playback hook
   const {
     isLooping,
     chordIndicator,
@@ -144,7 +142,6 @@ const ChordProgressionGenerator: React.FC = () => {
     midiChannel: selectedMidiChannel,
   });
 
-  // Read form values from URL on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -209,7 +206,7 @@ const ChordProgressionGenerator: React.FC = () => {
       try {
         window.history.replaceState({}, '', url);
       } catch {
-        console.warn('URL state could not be updated, possibly due to sandboxing.');
+        console.warn('URL state could not be updated.');
       }
     },
     [urlReady]
@@ -221,7 +218,7 @@ const ChordProgressionGenerator: React.FC = () => {
       if (!trimmed) {
         stopLoop();
         setGeneration(null);
-        setStatus({ tone: 'muted', message: 'Enter a progression and click Download or tweak a setting.' });
+        setStatus({ tone: 'muted', message: 'Enter a progression to begin.' });
         return;
       }
 
@@ -317,16 +314,16 @@ const ChordProgressionGenerator: React.FC = () => {
         document.execCommand('copy');
         document.body.removeChild(textArea);
       }
-      setStatus({ tone: 'success', message: 'Shareable URL copied to clipboard.' });
+      setStatus({ tone: 'success', message: 'URL copied to clipboard.' });
     } catch (error) {
       console.error('Failed to copy share URL', error);
-      setStatus({ tone: 'error', message: 'Unable to copy link in this browser.' });
+      setStatus({ tone: 'error', message: 'Unable to copy link.' });
     }
   }, []);
 
   const handleExportPdf = useCallback(async () => {
     if (!generation) {
-      setStatus({ tone: 'error', message: 'Generate a preview before exporting PDF.' });
+      setStatus({ tone: 'error', message: 'Generate a preview first.' });
       return;
     }
     try {
@@ -343,7 +340,7 @@ const ChordProgressionGenerator: React.FC = () => {
       const blob = await exportProgressionToPdf(options);
       const name = (options.outputFileName?.replace(/\.mid$/, '') || 'progression') + '.pdf';
       triggerDownload(blob, name);
-      setStatus({ tone: 'success', message: 'PDF export started.' });
+      setStatus({ tone: 'success', message: 'PDF exported.' });
     } catch (error) {
       console.error('PDF export error', error);
       setStatus({
@@ -358,49 +355,68 @@ const ChordProgressionGenerator: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-          <div className="card-body space-y-5">
-            <ChordProgressionForm
-              values={formValues}
-              onValueChange={handleValueChange}
-              onDownloadMidi={() => handleGenerate({ download: true })}
-              onCopyShareUrl={handleCopyShareUrl}
-              onExportPdf={handleExportPdf}
-              status={status}
-              isGenerating={isGenerating}
-              hasPreview={notesForRoll.length > 0}
-            />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        {/* Left column: Form controls */}
+        <div className="space-y-5">
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-4">
+              <ChordProgressionForm
+                values={formValues}
+                onValueChange={handleValueChange}
+                onDownloadMidi={() => handleGenerate({ download: true })}
+                onCopyShareUrl={handleCopyShareUrl}
+                onExportPdf={handleExportPdf}
+                status={status}
+                isGenerating={isGenerating}
+                hasPreview={notesForRoll.length > 0}
+              />
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">MIDI Output</h3>
+              <MidiOutputSelector
+                outputs={midiOutputs}
+                selectedId={selectedMidiOutputId}
+                onSelectId={setSelectedMidiOutputId}
+                channel={selectedMidiChannel}
+                onChannelChange={setSelectedMidiChannel}
+                onRefresh={refreshMidiOutputs}
+                error={midiError}
+              />
+            </div>
           </div>
         </div>
-        <div className="card bg-base-100 shadow-xl border border-base-200">
-          <div className="card-body space-y-4">
-            <ChordProgressionPianoRoll
-              notes={notesForRoll}
-              chordDetails={chordDetails}
-              synth={synth}
-              chordIndicator={chordIndicator}
-              onChordIndicatorChange={setChordIndicator}
-              onPlayProgression={startLoop}
-              onStopProgression={stopLoop}
-              isLooping={isLooping}
-              selectedMidiOutputId={selectedMidiOutputId}
-              midiChannel={selectedMidiChannel}
-            />
 
-            <MidiOutputSelector
-              outputs={midiOutputs}
-              selectedId={selectedMidiOutputId}
-              onSelectId={setSelectedMidiOutputId}
-              channel={selectedMidiChannel}
-              onChannelChange={setSelectedMidiChannel}
-              onRefresh={refreshMidiOutputs}
-              error={midiError}
-            />
+        {/* Right column: Piano roll + playback */}
+        <div className="space-y-4">
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-4">
+              <ChordProgressionPianoRoll
+                notes={notesForRoll}
+                chordDetails={chordDetails}
+                synth={synth}
+                chordIndicator={chordIndicator}
+                onChordIndicatorChange={setChordIndicator}
+                onPlayProgression={startLoop}
+                onStopProgression={stopLoop}
+                isLooping={isLooping}
+                selectedMidiOutputId={selectedMidiOutputId}
+                midiChannel={selectedMidiChannel}
+              />
+            </div>
+          </div>
 
-            <div className="text-xs text-base-content/70">
-              Preview updates automatically whenever you change the form. The loop playback respects the current output
-              type so you can focus on chords, bass, or both.
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-2 text-sm text-base-content/70">
+              <p>
+                Enter chord symbols like <code className="font-mono">C</code>, <code className="font-mono">Dm7</code>, or <code className="font-mono">Gsus</code>.
+                Add durations with <code className="font-mono">:1</code> (bars).
+              </p>
+              <p>
+                Tip: Use smooth voice leading for jazz progressions, or cocktail voicing for a sophisticated keyboard style.
+              </p>
             </div>
           </div>
         </div>
