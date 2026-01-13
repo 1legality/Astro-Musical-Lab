@@ -2701,6 +2701,82 @@
     }
   },
   {
+    "name": "RUINED CITY",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x.......x...x...",
+      "SN": "........x.......",
+      "CH": "x...x.......x...",
+      "OH": "....g.......g...",
+      "RS": "..g.......g....."
+    }
+  },
+  {
+    "name": "BROKEN SIGNAL",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x.....x.....x...",
+      "SN": "........x...g...",
+      "CH": "x.x...x...x...x.",
+      "CL": "..x...........x."
+    }
+  },
+  {
+    "name": "STATIC HAZE",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x...x.......x...",
+      "SN": "........x.......",
+      "CH": "x.x.x.x.x.x.x.x.",
+      "SH": "..g...g...g...g.",
+      "RS": "....g.......g..."
+    }
+  },
+  {
+    "name": "CONCRETE DREAM",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x.....x..x......",
+      "SN": "........x...g...",
+      "CH": "x...x...x...x...",
+      "OH": ".....x.....x....",
+      "LT": "...........x...."
+    }
+  },
+  {
+    "name": "SUBMERGED",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x.........x..x..",
+      "SN": "........x....g..",
+      "CH": "x.......x.......",
+      "MT": ".....x.........x",
+      "RS": "...g........g..."
+    }
+  },
+  {
+    "name": "NOIR ENGINE",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x..x...x....x...",
+      "SN": "........x.......",
+      "CH": "xxxxxxxxxxxxxxxx",
+      "CL": "....x.......x...",
+      "OH": "....g.......g..."
+    }
+  },
+  {
+    "name": "ASH CLOUD",
+    "section": "Dystopian",
+    "instruments": {
+      "BD": "x.......x....x..",
+      "SN": "........x.......",
+      "CH": "x..x..x..x..x...",
+      "RS": "....g....g....g.",
+      "OH": ".............x.."
+    }
+  },
+  {
     "name": "OUTRUN",
     "section": "Synthwave",
     "instruments": {
