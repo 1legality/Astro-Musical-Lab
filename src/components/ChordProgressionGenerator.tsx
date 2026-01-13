@@ -8,13 +8,13 @@ import {
   type NoteData,
   type OutputType,
   type InversionType,
-  TPQN,
   type ChordGenerationData,
 } from '../lib/chords/MidiGenerator';
-import { SynthChordPlayer, type ActiveNote } from '../lib/chords/SynthChordPlayer';
 import { VALID_DURATION_CODES, generateValidChordPattern } from '../lib/chords/ValidationUtils';
 import { exportProgressionToPdf } from '../lib/chords/PrintProgression';
-import { midiService } from '../lib/chords/MidiService';
+import { useChordPlayback } from '../hooks/useChordPlayback';
+import { useMidiOutput } from '../hooks/useMidiOutput';
+import MidiOutputSelector from './ui/MidiOutputSelector';
 
 export interface FormValues {
   progression: string;
@@ -40,12 +40,6 @@ const defaultValues: FormValues = {
   outputType: 'chordsAndBass',
   inversionType: 'smooth',
 };
-
-interface ScheduleItem {
-  notes: number[];
-  durationSec: number;
-  label: string;
-}
 
 const validSingleNotePattern = /^[A-G][#b]?1$/i;
 
@@ -112,45 +106,8 @@ function validateProgression(rawProgression: string): string {
   return validated.join(' ');
 }
 
-function buildSchedule(result: MidiGenerationResult | null, outputType: OutputType, tempo: number): ScheduleItem[] {
-  if (!result || !result.chordDetails?.length) return [];
-  const secPerTick = 60 / (Math.max(tempo, 1) * TPQN);
-
-  return result.chordDetails
-    .map((chord) => {
-      const durationSec = Math.max(0, chord.durationTicks) * secPerTick;
-      const notes = getNotesForOutputType(chord, outputType);
-      return { notes, durationSec, label: chord.symbol || 'Chord' };
-    })
-    .filter((item) => item.durationSec > 0);
-}
-
-function getNotesForOutputType(chord: ChordGenerationData, outputType: OutputType): number[] {
-  if (!chord.isValid) return [];
-  switch (outputType) {
-    case 'chordsOnly':
-      return [...(chord.adjustedVoicing || [])];
-    case 'chordsAndBass': {
-      const notes = [...(chord.adjustedVoicing || [])];
-      if (typeof chord.calculatedBassNote === 'number' && !notes.includes(chord.calculatedBassNote)) {
-        notes.push(chord.calculatedBassNote);
-      }
-      return notes;
-    }
-    case 'bassOnly':
-      return typeof chord.calculatedBassNote === 'number' ? [chord.calculatedBassNote] : [];
-    case 'bassAndFifth':
-      if (typeof chord.calculatedBassNote !== 'number') return [];
-      const fifth = chord.calculatedBassNote + 7;
-      return fifth >= 0 && fifth <= 127 ? [chord.calculatedBassNote, fifth] : [chord.calculatedBassNote];
-    default:
-      return [];
-  }
-}
-
 const ChordProgressionGenerator: React.FC = () => {
   const midiGenerator = useMemo(() => new MidiGenerator(), []);
-  const synthRef = useRef<SynthChordPlayer | null>(null);
   const [formValues, setFormValues] = useState<FormValues>(defaultValues);
   const [status, setStatus] = useState<StatusMessage>({
     tone: 'muted',
@@ -158,60 +115,36 @@ const ChordProgressionGenerator: React.FC = () => {
   });
   const [generation, setGeneration] = useState<MidiGenerationResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [chordIndicator, setChordIndicator] = useState('Click a chord button to play it.');
-  const [isLooping, setIsLooping] = useState(false);
   const [urlReady, setUrlReady] = useState(false);
 
-  // MIDI Controller State
-  const [midiOutputs, setMidiOutputs] = useState<MIDIOutput[]>([]);
-  const [selectedMidiOutputId, setSelectedMidiOutputId] = useState<string>('');
-  const [selectedMidiChannel, setSelectedMidiChannel] = useState<number>(0);
-  const [midiError, setMidiError] = useState<string | null>(null);
+  // Use the MIDI output hook
+  const {
+    outputs: midiOutputs,
+    selectedId: selectedMidiOutputId,
+    channel: selectedMidiChannel,
+    error: midiError,
+    setSelectedId: setSelectedMidiOutputId,
+    setChannel: setSelectedMidiChannel,
+    refresh: refreshMidiOutputs,
+  } = useMidiOutput();
 
-  const playbackTimeoutRef = useRef<number | null>(null);
-  const playbackNotesRef = useRef<ActiveNote[] | null>(null);
-  const playbackIndexRef = useRef(0);
-  const isLoopingRef = useRef(false);
+  // Use the chord playback hook
+  const {
+    isLooping,
+    chordIndicator,
+    startLoop,
+    stopLoop,
+    synth,
+    setChordIndicator,
+  } = useChordPlayback({
+    generation,
+    outputType: formValues.outputType,
+    tempo: formValues.tempo,
+    midiOutputId: selectedMidiOutputId,
+    midiChannel: selectedMidiChannel,
+  });
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    synthRef.current = new SynthChordPlayer(0.45);
-
-    // Initialize MIDI
-    midiService.initialize()
-      .then(() => {
-        const outputs = midiService.getOutputs();
-        setMidiOutputs(outputs);
-        if (outputs.length > 0) {
-          setSelectedMidiOutputId(outputs[0].id);
-        }
-      })
-      .catch((err) => {
-        console.warn('MIDI initialization failed', err);
-        setMidiError('MIDI access denied or not supported.');
-      });
-
-    return () => {
-      synthRef.current?.stopNotes();
-    };
-  }, []);
-
-  const refreshMidiOutputs = useCallback(async () => {
-    try {
-      // Re-initialize to ensure we get fresh access if needed, or just get outputs
-      await midiService.initialize();
-      const outputs = midiService.getOutputs();
-      setMidiOutputs(outputs);
-      if (outputs.length > 0 && !selectedMidiOutputId) {
-        setSelectedMidiOutputId(outputs[0].id);
-      }
-      setMidiError(null);
-    } catch (err) {
-      console.warn('MIDI refresh failed', err);
-      setMidiError('Could not refresh MIDI devices.');
-    }
-  }, [selectedMidiOutputId]);
-
+  // Read form values from URL on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -275,31 +208,12 @@ const ChordProgressionGenerator: React.FC = () => {
       const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
       try {
         window.history.replaceState({}, '', url);
-      } catch (e) {
+      } catch {
         console.warn('URL state could not be updated, possibly due to sandboxing.');
       }
     },
     [urlReady]
   );
-
-
-  useEffect(() => {
-    isLoopingRef.current = isLooping;
-  }, [isLooping]);
-
-  const stopLoop = useCallback(() => {
-    setIsLooping(false);
-    isLoopingRef.current = false;
-    if (playbackTimeoutRef.current !== null) {
-      clearTimeout(playbackTimeoutRef.current);
-      playbackTimeoutRef.current = null;
-    }
-    if (playbackNotesRef.current && synthRef.current) {
-      synthRef.current.stopNotes(playbackNotesRef.current);
-      playbackNotesRef.current = null;
-    }
-    setChordIndicator('Click a chord button to play it.');
-  }, []);
 
   const handleGenerate = useCallback(
     (options?: { download?: boolean }) => {
@@ -369,7 +283,7 @@ const ChordProgressionGenerator: React.FC = () => {
     }
     debounceTimeoutRef.current = window.setTimeout(() => {
       updateUrl(formValues);
-    }, 500); // 500ms debounce delay
+    }, 500);
 
     const generateHandle = window.setTimeout(() => handleGenerate(), 350);
 
@@ -439,61 +353,6 @@ const ChordProgressionGenerator: React.FC = () => {
     }
   }, [formValues, generation]);
 
-  const startLoop = useCallback(async () => {
-    if (isLooping) return;
-    const schedule = buildSchedule(generation, formValues.outputType, formValues.tempo);
-    if (!schedule.length) {
-      setStatus({ tone: 'error', message: 'Generate a progression first.' });
-      return;
-    }
-    const synth = synthRef.current;
-    if (!synth) {
-      setStatus({ tone: 'error', message: 'Audio playback is unavailable in this environment.' });
-      return;
-    }
-
-    await synth.ensureContextResumed();
-    setIsLooping(true);
-    isLoopingRef.current = true;
-    playbackIndexRef.current = 0;
-
-    const advance = () => {
-      if (!synthRef.current) return;
-      if (!isLoopingRef.current) return;
-      const item = schedule[playbackIndexRef.current];
-
-      if (playbackNotesRef.current) {
-        synthRef.current.stopNotes(playbackNotesRef.current);
-        playbackNotesRef.current = null;
-      }
-
-      if (item.notes.length > 0) {
-        playbackNotesRef.current = synthRef.current.startChord(item.notes);
-
-        if (selectedMidiOutputId) {
-          midiService.sendChordOn(selectedMidiOutputId, item.notes, 0x7f, selectedMidiChannel - 1);
-        }
-
-        setChordIndicator(`Playing: ${item.label}`);
-      } else {
-        setChordIndicator('Rest');
-      }
-
-      const nextDelay = Math.max(10, item.durationSec * 1000);
-      playbackTimeoutRef.current = window.setTimeout(() => {
-        // Stop MIDI notes before advancing (simulating quick note off, though ideally duration based)
-        if (selectedMidiOutputId && item.notes.length > 0) {
-          midiService.sendChordOff(selectedMidiOutputId, item.notes, selectedMidiChannel - 1);
-        }
-
-        playbackIndexRef.current = (playbackIndexRef.current + 1) % schedule.length;
-        advance();
-      }, nextDelay);
-    };
-
-    advance();
-  }, [formValues.outputType, formValues.tempo, generation, isLooping]);
-
   const notesForRoll: NoteData[] = generation?.notesForPianoRoll ?? [];
   const chordDetails: ChordGenerationData[] = generation?.chordDetails ?? [];
 
@@ -519,7 +378,7 @@ const ChordProgressionGenerator: React.FC = () => {
             <ChordProgressionPianoRoll
               notes={notesForRoll}
               chordDetails={chordDetails}
-              synth={synthRef.current}
+              synth={synth}
               chordIndicator={chordIndicator}
               onChordIndicatorChange={setChordIndicator}
               onPlayProgression={startLoop}
@@ -528,59 +387,16 @@ const ChordProgressionGenerator: React.FC = () => {
               selectedMidiOutputId={selectedMidiOutputId}
               midiChannel={selectedMidiChannel}
             />
-            {/* MIDI Output Selection */}
-            <div className="space-y-2">
-              <div className="flex items-end gap-2">
-                <div className="form-control flex-1">
-                  <label className="label">
-                    <span className="label-text text-sm font-medium">External MIDI Output</span>
-                  </label>
-                  <select
-                    className="select select-bordered select-sm w-full"
-                    value={selectedMidiOutputId}
-                    onChange={(e) => setSelectedMidiOutputId(e.target.value)}
-                    disabled={midiOutputs.length === 0}
-                  >
-                    <option value="">None (Browser Audio Only)</option>
-                    {midiOutputs.map(output => (
-                      <option key={output.id} value={output.id}>{output.name}</option>
-                    ))}
-                  </select>
-                </div>
 
-                <div className="form-control w-24">
-                  <label className="label">
-                    <span className="label-text text-sm font-medium">Channel</span>
-                  </label>
-                  <select
-                    className="select select-bordered select-sm w-full"
-                    value={selectedMidiChannel}
-                    onChange={(e) => setSelectedMidiChannel(Number(e.target.value))}
-                    disabled={!selectedMidiOutputId}
-                  >
-                    <option value={0}>Omni (All)</option>
-                    {Array.from({ length: 16 }, (_, i) => i + 1).map(ch => (
-                      <option key={ch} value={ch}>{ch}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  className="btn btn-sm btn-ghost border-base-300"
-                  onClick={refreshMidiOutputs}
-                  title="Refresh MIDI Devices"
-                >
-                  ↻
-                </button>
-              </div>
-
-              {midiError && <div className="text-xs text-error">{midiError}</div>}
-              {!midiError && midiOutputs.length === 0 && <div className="text-xs text-base-content/50">No MIDI devices found. Connect your device and click refresh.</div>}
-
-              <div className="rounded-md bg-base-200 p-3 text-xs text-base-content/70">
-                <strong>Tip:</strong> Select a MIDI device to test chords on your hardware synthesizers in real-time or to record sequences directly into an external sequencer (like the Oxi One).
-              </div>
-            </div>
+            <MidiOutputSelector
+              outputs={midiOutputs}
+              selectedId={selectedMidiOutputId}
+              onSelectId={setSelectedMidiOutputId}
+              channel={selectedMidiChannel}
+              onChannelChange={setSelectedMidiChannel}
+              onRefresh={refreshMidiOutputs}
+              error={midiError}
+            />
 
             <div className="text-xs text-base-content/70">
               Preview updates automatically whenever you change the form. The loop playback respects the current output
