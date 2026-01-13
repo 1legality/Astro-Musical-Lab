@@ -463,8 +463,39 @@ const PulseGeneratorExplorer: React.FC = () => {
                 >
                   Stop
                 </button>
-                <div className="badge badge-outline badge-lg font-mono">
-                  {bpm} BPM
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline px-2"
+                    onClick={() => setBpm((b) => Math.max(20, b - 1))}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={bpm}
+                    key={bpm}
+                    onBlur={(e) => {
+                      let val = parseInt(e.target.value, 10);
+                      if (isNaN(val)) val = 120;
+                      setBpm(Math.min(300, Math.max(20, val)));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="input input-bordered input-sm w-16 text-center font-mono"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline px-2"
+                    onClick={() => setBpm((b) => Math.min(300, b + 1))}
+                  >
+                    +
+                  </button>
+                  <span className="text-xs text-base-content/70">BPM</span>
                 </div>
               </div>
               <div className="flex flex-wrap gap-4">

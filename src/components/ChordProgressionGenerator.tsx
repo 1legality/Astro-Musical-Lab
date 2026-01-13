@@ -130,6 +130,7 @@ const ChordProgressionGenerator: React.FC = () => {
   const {
     isLooping,
     chordIndicator,
+    playbackProgress,
     startLoop,
     stopLoop,
     synth,
@@ -355,70 +356,54 @@ const ChordProgressionGenerator: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        {/* Left column: Form controls */}
-        <div className="space-y-5">
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-4">
-              <ChordProgressionForm
-                values={formValues}
-                onValueChange={handleValueChange}
-                onDownloadMidi={() => handleGenerate({ download: true })}
-                onCopyShareUrl={handleCopyShareUrl}
-                onExportPdf={handleExportPdf}
-                status={status}
-                isGenerating={isGenerating}
-                hasPreview={notesForRoll.length > 0}
-              />
-            </div>
-          </div>
-
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">MIDI Output</h3>
-              <MidiOutputSelector
-                outputs={midiOutputs}
-                selectedId={selectedMidiOutputId}
-                onSelectId={setSelectedMidiOutputId}
-                channel={selectedMidiChannel}
-                onChannelChange={setSelectedMidiChannel}
-                onRefresh={refreshMidiOutputs}
-                error={midiError}
-              />
-            </div>
-          </div>
+      {/* Row 1: Form controls */}
+      <div className="card bg-base-200/70">
+        <div className="card-body space-y-4">
+          <ChordProgressionForm
+            values={formValues}
+            onValueChange={handleValueChange}
+            onDownloadMidi={() => handleGenerate({ download: true })}
+            onCopyShareUrl={handleCopyShareUrl}
+            onExportPdf={handleExportPdf}
+            status={status}
+            isGenerating={isGenerating}
+            hasPreview={notesForRoll.length > 0}
+          />
         </div>
+      </div>
 
-        {/* Right column: Piano roll + playback */}
-        <div className="space-y-4">
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-4">
-              <ChordProgressionPianoRoll
-                notes={notesForRoll}
-                chordDetails={chordDetails}
-                synth={synth}
-                chordIndicator={chordIndicator}
-                onChordIndicatorChange={setChordIndicator}
-                onPlayProgression={startLoop}
-                onStopProgression={stopLoop}
-                isLooping={isLooping}
-                selectedMidiOutputId={selectedMidiOutputId}
-                midiChannel={selectedMidiChannel}
-              />
-            </div>
-          </div>
+      {/* Row 2: MIDI Output */}
+      <div className="card bg-base-200/70">
+        <div className="card-body space-y-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">MIDI Output</h3>
+          <MidiOutputSelector
+            outputs={midiOutputs}
+            selectedId={selectedMidiOutputId}
+            onSelectId={setSelectedMidiOutputId}
+            channel={selectedMidiChannel}
+            onChannelChange={setSelectedMidiChannel}
+            onRefresh={refreshMidiOutputs}
+            error={midiError}
+          />
+        </div>
+      </div>
 
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-2 text-sm text-base-content/70">
-              <p>
-                Enter chord symbols like <code className="font-mono">C</code>, <code className="font-mono">Dm7</code>, or <code className="font-mono">Gsus</code>.
-                Add durations with <code className="font-mono">:1</code> (bars).
-              </p>
-              <p>
-                Tip: Use smooth voice leading for jazz progressions, or cocktail voicing for a sophisticated keyboard style.
-              </p>
-            </div>
-          </div>
+      {/* Row 3: Piano roll + playback */}
+      <div className="card bg-base-200/70">
+        <div className="card-body space-y-4">
+          <ChordProgressionPianoRoll
+            notes={notesForRoll}
+            chordDetails={chordDetails}
+            synth={synth}
+            chordIndicator={chordIndicator}
+            onChordIndicatorChange={setChordIndicator}
+            onPlayProgression={startLoop}
+            onStopProgression={stopLoop}
+            isLooping={isLooping}
+            playbackProgress={playbackProgress}
+            selectedMidiOutputId={selectedMidiOutputId}
+            midiChannel={selectedMidiChannel}
+          />
         </div>
       </div>
     </div>

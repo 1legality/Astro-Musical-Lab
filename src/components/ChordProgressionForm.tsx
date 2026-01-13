@@ -93,20 +93,44 @@ const ChordProgressionForm: React.FC<ChordProgressionFormProps> = ({
           />
         </label>
 
-        <label className="form-control">
-          <div className="flex justify-between items-center mb-1">
-            <span className="label-text text-xs uppercase tracking-wide">Tempo</span>
-            <span className="text-xs font-mono text-base-content/70">{values.tempo} BPM</span>
+        <div className="form-control">
+          <span className="label-text text-xs uppercase tracking-wide mb-1">Tempo</span>
+          <div className="flex items-center gap-1">
+
+            <button
+              type="button"
+              className="btn btn-sm btn-outline px-2"
+              onClick={() => onValueChange('tempo', Math.max(20, values.tempo - 1))}
+            >
+              −
+            </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              defaultValue={values.tempo}
+              key={values.tempo} // specific key trick to reset if external props change
+              onBlur={(e) => {
+                let val = parseInt(e.target.value, 10);
+                if (isNaN(val)) val = 120;
+                onValueChange('tempo', Math.min(300, Math.max(20, val)));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
+              className="input input-bordered input-sm w-20 text-center font-mono"
+            />
+            <button
+              type="button"
+              className="btn btn-sm btn-outline px-2"
+              onClick={() => onValueChange('tempo', Math.min(300, values.tempo + 1))}
+            >
+              +
+            </button>
+            <span className="text-xs text-base-content/70">BPM</span>
           </div>
-          <input
-            type="range"
-            min={20}
-            max={300}
-            value={values.tempo}
-            className="range range-xs"
-            onChange={(event) => onValueChange('tempo', Number(event.target.value))}
-          />
-        </label>
+        </div>
       </div>
 
       {/* Row 2: All Selects */}

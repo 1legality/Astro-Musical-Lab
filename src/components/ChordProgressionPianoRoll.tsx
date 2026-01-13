@@ -12,14 +12,21 @@ interface ChordProgressionPianoRollProps {
   onPlayProgression: () => void;
   onStopProgression: () => void;
   isLooping: boolean;
+  playbackProgress: number;
   selectedMidiOutputId?: string;
   midiChannel?: number;
 }
 
-const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
+interface PianoRollDisplayProps {
+  notes: NoteData[];
+  playbackProgress: number;
+  isPlaying: boolean;
+}
+
+const PianoRollDisplay: React.FC<PianoRollDisplayProps> = ({ notes, playbackProgress, isPlaying }) => {
   if (!notes || notes.length === 0) {
     return (
-      <div className="h-24 w-full bg-base-100/60 rounded-xl flex items-center justify-center">
+      <div className="h-40 w-full bg-base-100/60 rounded-xl flex items-center justify-center">
         <p className="text-xs text-base-content/50">No notes to display</p>
       </div>
     );
@@ -40,7 +47,7 @@ const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
   if (maxTimeTicks <= 0) maxTimeTicks = 1;
 
   return (
-    <div className="relative h-24 w-full bg-base-100/60 rounded-xl overflow-hidden border border-base-300">
+    <div className="relative h-40 w-full bg-base-100/60 rounded-xl overflow-hidden border border-base-300">
       {notes.map((note, index) => {
         const left = (note.startTimeTicks / maxTimeTicks) * 100;
         const width = (note.durationTicks / maxTimeTicks) * 100;
@@ -62,6 +69,17 @@ const PianoRollDisplay: React.FC<{ notes: NoteData[] }> = ({ notes }) => {
           />
         );
       })}
+
+      {/* Playhead */}
+      {isPlaying && (
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-error z-10 pointer-events-none"
+          style={{
+            left: `${playbackProgress * 100}%`,
+            boxShadow: '0 0 8px 2px rgba(239, 68, 68, 0.5)',
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -76,6 +94,7 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
   onPlayProgression,
   onStopProgression,
   isLooping,
+  playbackProgress,
   selectedMidiOutputId,
   midiChannel = 0,
 }) => {
@@ -147,7 +166,7 @@ const ChordProgressionPianoRoll: React.FC<ChordProgressionPianoRollProps> = ({
     <div className="space-y-4">
       <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Piano Roll Preview</h3>
 
-      <PianoRollDisplay notes={notes} />
+      <PianoRollDisplay notes={notes} playbackProgress={playbackProgress} isPlaying={isLooping} />
 
       <div className="space-y-2">
         <span className="label-text text-xs uppercase tracking-wide">Chord Buttons</span>

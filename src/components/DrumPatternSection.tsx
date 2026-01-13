@@ -330,20 +330,43 @@ const DrumPatternSection: React.FC = () => {
                 </select>
               </div>
 
-              {/* Tempo slider */}
+              {/* Tempo input */}
               <div className="col-span-6 lg:col-span-2 form-control">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="label-text text-xs uppercase tracking-wide">Tempo</span>
-                  <span className="text-xs font-mono text-base-content/70">{bpm}</span>
+                <span className="label-text text-xs uppercase tracking-wide mb-1">Tempo</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline px-2"
+                    onClick={() => setBpm((b) => Math.max(20, b - 1))}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={bpm}
+                    key={bpm}
+                    onBlur={(e) => {
+                      let val = parseInt(e.target.value, 10);
+                      if (isNaN(val)) val = 120;
+                      setBpm(Math.min(300, Math.max(20, val)));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="input input-bordered input-sm w-16 text-center font-mono"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline px-2"
+                    onClick={() => setBpm((b) => Math.min(300, b + 1))}
+                  >
+                    +
+                  </button>
+                  <span className="text-xs text-base-content/70">BPM</span>
                 </div>
-                <input
-                  type="range"
-                  min={50}
-                  max={240}
-                  value={bpm}
-                  className="range range-xs"
-                  onChange={(e) => setBpm(Number(e.target.value))}
-                />
               </div>
 
               {/* MIDI Channel */}

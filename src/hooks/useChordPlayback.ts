@@ -64,6 +64,8 @@ export interface UseChordPlaybackReturn {
     isLooping: boolean;
     /** Current chord indicator text */
     chordIndicator: string;
+    /** Playback progress from 0 to 1 */
+    playbackProgress: number;
     /** Start the chord progression loop */
     startLoop: () => Promise<void>;
     /** Stop the loop */
@@ -82,11 +84,16 @@ export function useChordPlayback(options: UseChordPlaybackOptions): UseChordPlay
 
     const [isLooping, setIsLooping] = useState(false);
     const [chordIndicator, setChordIndicator] = useState('Click a chord button to play it.');
+    const [playbackProgress, setPlaybackProgress] = useState(0);
 
     const synthRef = useRef<SynthChordPlayer | null>(null);
     const playbackTimeoutRef = useRef<number | null>(null);
     const playbackNotesRef = useRef<ActiveNote[] | null>(null);
     const playbackIndexRef = useRef(0);
+    const animationFrameRef = useRef<number | null>(null);
+    const chordStartTimeRef = useRef<number>(0);
+    const scheduleRef = useRef<ScheduleItem[]>([]);
+    const totalDurationRef = useRef<number>(0);
     const isLoopingRef = useRef(false);
 
     // Initialize synth on mount
@@ -113,11 +120,17 @@ export function useChordPlayback(options: UseChordPlaybackOptions): UseChordPlay
             playbackTimeoutRef.current = null;
         }
 
+        if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+
         if (playbackNotesRef.current && synthRef.current) {
             synthRef.current.stopNotes(playbackNotesRef.current);
             playbackNotesRef.current = null;
         }
 
+        setPlaybackProgress(0);
         setChordIndicator('Click a chord button to play it.');
     }, []);
 
@@ -139,11 +152,36 @@ export function useChordPlayback(options: UseChordPlaybackOptions): UseChordPlay
         isLoopingRef.current = true;
         playbackIndexRef.current = 0;
 
+        // Store schedule info for progress calculation
+        scheduleRef.current = schedule;
+        totalDurationRef.current = schedule.reduce((sum, item) => sum + item.durationSec, 0);
+
+        // Animation loop for smooth playhead
+        const animatePlayhead = () => {
+            if (!isLoopingRef.current) return;
+
+            const now = performance.now();
+            const elapsed = (now - chordStartTimeRef.current) / 1000;
+            const currentChordDuration = scheduleRef.current[playbackIndexRef.current]?.durationSec || 0;
+
+            // Calculate time offset for current chord within total duration
+            let timeOffset = 0;
+            for (let i = 0; i < playbackIndexRef.current; i++) {
+                timeOffset += scheduleRef.current[i].durationSec;
+            }
+
+            const currentProgress = (timeOffset + Math.min(elapsed, currentChordDuration)) / totalDurationRef.current;
+            setPlaybackProgress(Math.min(1, Math.max(0, currentProgress)));
+
+            animationFrameRef.current = requestAnimationFrame(animatePlayhead);
+        };
+
         const advance = () => {
             if (!synthRef.current) return;
             if (!isLoopingRef.current) return;
 
             const item = schedule[playbackIndexRef.current];
+            chordStartTimeRef.current = performance.now();
 
             if (playbackNotesRef.current) {
                 synthRef.current.stopNotes(playbackNotesRef.current);
@@ -173,12 +211,17 @@ export function useChordPlayback(options: UseChordPlaybackOptions): UseChordPlay
             }, nextDelay);
         };
 
+        // Start the animation loop
+        chordStartTimeRef.current = performance.now();
+        animationFrameRef.current = requestAnimationFrame(animatePlayhead);
+
         advance();
     }, [generation, outputType, tempo, isLooping, midiOutputId, midiChannel]);
 
     return {
         isLooping,
         chordIndicator,
+        playbackProgress,
         startLoop,
         stopLoop,
         synth: synthRef.current,
