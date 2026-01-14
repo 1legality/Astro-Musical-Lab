@@ -16,13 +16,6 @@ const chordTools = (await getCollection("ChordProgressionTool")).sort(
   ) => a.data.order - b.data.order,
 );
 
-const drumPatterns = (await getCollection("DrumPatternsTools")).sort(
-  (
-    a: CollectionEntry<"DrumPatternsTools">,
-    b: CollectionEntry<"DrumPatternsTools">,
-  ) => a.data.order - b.data.order,
-);
-
 const { title } = Astro.props;
 ---
 
@@ -34,25 +27,88 @@ const { title } = Astro.props;
     <link rel="icon" href="/favicon.svg" />
   </head>
   <body class="min-h-screen bg-base-200 text-base-content antialiased">
-    <div class="drawer lg:drawer-open">
+    <div class="drawer">
       <input id="nav-drawer" type="checkbox" class="drawer-toggle" />
       <div class="drawer-content flex flex-col">
-        <label
-          for="nav-drawer"
-          class="btn btn-ghost drawer-button lg:hidden m-4 self-start"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            class="inline-block w-6 h-6 stroke-current"
-            ><path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6h16M4 12h16M4 18h16"></path></svg
-          >
-        </label>
+        <nav class="navbar bg-base-100 shadow-sm z-50">
+          <div class="navbar-start">
+            <label
+              for="nav-drawer"
+              class="btn btn-ghost lg:hidden mr-2"
+              aria-label="Open menu"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                class="inline-block w-6 h-6 stroke-current"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"></path></svg
+              >
+            </label>
+            <a class="btn btn-ghost normal-case text-xl" href="/"
+              >Rhythm Guide</a
+            >
+          </div>
+          <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal px-1">
+              <li><a class="font-semibold" href="/">Home</a></li>
+              {
+                chordTools.length > 0 ? (
+                  <li>
+                    <a
+                      class="font-semibold"
+                      href={`/tools/${chordTools[0].slug}`}
+                    >
+                      Chord Progression tool
+                    </a>
+                  </li>
+                ) : (
+                  <li>
+                    <a class="font-semibold" href="/tools">
+                      Chord Progression tool
+                    </a>
+                  </li>
+                )
+              }
+              <li>
+                <a class="font-semibold" href="/drum-patterns/basic-patterns"
+                  >Drum Patterns</a
+                >
+              </li>
+              <li>
+                <a class="font-semibold" href="/rhythms/pulse-generator"
+                  >Pulse Generator</a
+                >
+              </li>
+              <li>
+                <details>
+                  <summary class="font-semibold">Other</summary>
+                  <ul
+                    class="p-2 bg-base-100 absolute right-0 top-5 mt-4 w-80 shadow-xl rounded-box z-[100]"
+                  >
+                    {
+                      allRhythms
+                        .filter((r) => r.slug !== "pulse-generator")
+                        .map((r) => (
+                          <li>
+                            <a href={`/rhythms/${r.slug}`}>{r.data.title}</a>
+                          </li>
+                        ))
+                    }
+                  </ul>
+                </details>
+              </li>
+            </ul>
+          </div>
+          <div class="navbar-end hidden md:flex">
+            <!-- reserved for midi selector or controls -->
+          </div>
+        </nav>
+
         <main class="mx-auto w-full max-w-7xl px-4 py-8 space-y-6">
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
@@ -64,79 +120,74 @@ const { title } = Astro.props;
           </div>
         </main>
       </div>
-      <div class="drawer-side">
+      <div class="drawer-side lg:hidden">
         <label
           for="nav-drawer"
           aria-label="close sidebar"
           class="drawer-overlay"></label>
         <nav
-          class="menu bg-base-100 text-base-content min-h-full w-80 p-4 space-y-2"
+          class="menu bg-base-100 text-base-content min-h-screen w-screen p-6 space-y-6 overflow-y-auto"
         >
-          <h2
-            class="menu-title text-sm uppercase tracking-widest text-base-400"
-          >
-            Navigate
-          </h2>
-          <ul>
-            <li>
-              <a class="font-semibold" href="/">Home</a>
-            </li>
-          </ul>
-          <h2
-            class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6"
-          >
-            Rhythms
-          </h2>
-          <ul class="space-y-1">
-            {
-              allRhythms.map((rhythm) => (
-                <li>
-                  <a class="font-semibold" href={`/rhythms/${rhythm.slug}`}>
-                    {rhythm.data.title}
-                  </a>
-                </li>
-              ))
-            }
-          </ul>
-          {
-            chordTools.length > 0 && (
-              <>
-                <h2 class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6">
-                  Tools
-                </h2>
-                <ul class="space-y-1">
-                  {chordTools.map((tool) => (
+          <div>
+            <h2
+              class="menu-title text-sm uppercase tracking-widest text-base-400"
+            >
+              Menu
+            </h2>
+            <ul class="space-y-1">
+              <li>
+                <a class="font-semibold" href="/">Home</a>
+              </li>
+              {
+                chordTools.length > 0 ? (
+                  <li>
+                    <a
+                      class="font-semibold"
+                      href={`/tools/${chordTools[0].slug}`}
+                    >
+                      Chord Progression tool
+                    </a>
+                  </li>
+                ) : (
+                  <li>
+                    <a class="font-semibold" href="/tools">
+                      Chord Progression tool
+                    </a>
+                  </li>
+                )
+              }
+              <li>
+                <a class="font-semibold" href="/drum-patterns/basic-patterns"
+                  >Drum Patterns</a
+                >
+              </li>
+              <li>
+                <a class="font-semibold" href="/rhythms/pulse-generator"
+                  >Pulse Generator</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h2
+              class="menu-title text-sm uppercase tracking-widest text-base-400"
+            >
+              Other
+            </h2>
+            <ul class="space-y-1">
+              {
+                allRhythms
+                  .filter((rhythm) => rhythm.slug !== "pulse-generator")
+                  .map((rhythm) => (
                     <li>
-                      <a class="font-semibold" href={`/tools/${tool.slug}`}>
-                        {tool.data.title}
+                      <a class="font-semibold" href={`/rhythms/${rhythm.slug}`}>
+                        {rhythm.data.title}
                       </a>
                     </li>
-                  ))}
-                </ul>
-              </>
-            )
-          }
-          {
-            drumPatterns.length > 0 && (
-              <>
-                <h2 class="menu-title text-sm uppercase tracking-widest text-base-400 mt-6">
-                  Drum Patterns
-                </h2>
-                <ul class="space-y-1">
-                  {drumPatterns.map((pattern) => (
-                    <li>
-                      <a
-                        class="font-semibold"
-                        href={`/drum-patterns/${pattern.slug}`}
-                      >
-                        {pattern.data.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )
-          }
+                  ))
+              }
+            </ul>
+          </div>
         </nav>
       </div>
     </div>
