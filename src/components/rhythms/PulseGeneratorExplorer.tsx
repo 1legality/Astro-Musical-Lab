@@ -197,6 +197,7 @@ const CHORD_PRESETS = [
 ];
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const formatNoteLabel = (note: number) => `${NOTE_LABELS[note % 12]}${Math.floor(note / 12) - 1}`;
 
 const PulseGeneratorExplorer: React.FC = () => {
   const [patternIndex, setPatternIndex] = useState(0);
@@ -422,6 +423,9 @@ const PulseGeneratorExplorer: React.FC = () => {
     return values;
   }, [accentVelocity, fixedVelocity, ghostVelocity, inputVelocity, pattern, velocityMode]);
 
+  const velocityChartHeight = 80;
+  const velocityChartPadding = 6;
+  const velocityChartInnerHeight = velocityChartHeight - velocityChartPadding * 2;
   const velocityChartWidth = useMemo(() => Math.max(1, pattern.len - 1) * 12, [pattern.len]);
 
   const velocityPolyline = useMemo(() => {
@@ -429,13 +433,59 @@ const PulseGeneratorExplorer: React.FC = () => {
     return velocityPreview
       .map((val, idx) => {
         const x = (idx / Math.max(1, pattern.len - 1)) * velocityChartWidth;
-        const y = 80 - (val / 127) * 80;
+        const normalized = val / 127;
+        const y = velocityChartPadding + (1 - normalized) * velocityChartInnerHeight;
         return `${x},${y}`;
       })
       .join(' ');
-  }, [pattern.len, velocityChartWidth, velocityPreview]);
+  }, [pattern.len, velocityChartInnerHeight, velocityChartPadding, velocityChartWidth, velocityPreview]);
 
-  const stepGroups = Math.ceil(pattern.len / 4);
+  const arpPreview = useMemo(() => {
+    if (heldNotes.length === 0) return [];
+    const localIndexRef = { current: 1 };
+    const localDirectionRef = { current: 1 };
+    return Array.from({ length: pattern.len }, () => {
+      const notes = getNotesToPlay(heldNotes, arpMode, localIndexRef, localDirectionRef);
+      return notes.map(noteData => clamp(noteData.note + (octaveShift * 12), 0, 127));
+    });
+  }, [arpMode, heldNotes, octaveShift, pattern.len]);
+
+  const arpNoteScale = useMemo(() => {
+    if (arpPreview.length === 0) return null;
+    const allNotes = arpPreview.reduce((acc, stepNotes) => acc.concat(stepNotes), [] as number[]);
+    if (allNotes.length === 0) return null;
+    const min = Math.min(...allNotes);
+    const max = Math.max(...allNotes);
+    const span = max - min;
+    return { min, max, span: span === 0 ? 1 : span, isFlat: span === 0 };
+  }, [arpPreview]);
+
+  const arpShapeValues = useMemo(() => {
+    if (arpPreview.length === 0) return [];
+    return arpPreview.map(stepNotes => {
+      if (stepNotes.length === 0) return 0;
+      const total = stepNotes.reduce((sum, note) => sum + note, 0);
+      return total / stepNotes.length;
+    });
+  }, [arpPreview]);
+
+  const arpChartHeight = 80;
+  const arpChartPadding = 6;
+  const arpChartInnerHeight = arpChartHeight - arpChartPadding * 2;
+  const arpChartWidth = useMemo(() => Math.max(1, pattern.len - 1) * 12, [pattern.len]);
+
+  const arpPolyline = useMemo(() => {
+    if (!arpNoteScale || arpShapeValues.length === 0) return '';
+    return arpShapeValues
+      .map((note, idx) => {
+        const x = (idx / Math.max(1, pattern.len - 1)) * arpChartWidth;
+        const normalized = arpNoteScale.isFlat ? 0.5 : (note - arpNoteScale.min) / arpNoteScale.span;
+        const y = arpChartPadding + (1 - normalized) * arpChartInnerHeight;
+        return `${x},${y}`;
+      })
+      .join(' ');
+  }, [arpChartInnerHeight, arpChartPadding, arpChartWidth, arpNoteScale, arpShapeValues, pattern.len]);
+
   const accentSteps = new Set(pattern.steps.filter(step => step.accent).map(step => step.position));
   const ghostSteps = new Set(pattern.steps.filter(step => !step.accent).map(step => step.position));
 
@@ -734,7 +784,7 @@ const PulseGeneratorExplorer: React.FC = () => {
             <div className="card-body space-y-3">
               <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Velocity Shape</h3>
               <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-100/60 p-3">
-                <svg viewBox={`0 0 ${velocityChartWidth} 80`} className="w-full h-24">
+                <svg viewBox={`0 0 ${velocityChartWidth} ${velocityChartHeight}`} className="w-full h-24">
                   <defs>
                     <linearGradient id="velStroke" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="hsl(var(--p))" stopOpacity="0.95" />
@@ -752,7 +802,8 @@ const PulseGeneratorExplorer: React.FC = () => {
                   />
                   {velocityPreview.map((val, idx) => {
                     const x = (idx / Math.max(1, pattern.len - 1)) * velocityChartWidth;
-                    const y = 80 - (val / 127) * 80;
+                    const normalized = val / 127;
+                    const y = velocityChartPadding + (1 - normalized) * velocityChartInnerHeight;
                     const isAccent = pattern.steps.some(step => step.position === idx && step.accent);
                     const isGhost = pattern.steps.some(step => step.position === idx && !step.accent);
                     const fill = isAccent ? 'hsl(var(--p))' : isGhost ? 'hsl(var(--wa))' : 'hsl(var(--bc))';
@@ -777,33 +828,89 @@ const PulseGeneratorExplorer: React.FC = () => {
 
           <div className="card bg-base-200/70">
             <div className="card-body space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Pattern Grid</h3>
-              <div className="flex flex-wrap gap-x-3 gap-y-2">
-                {Array.from({ length: stepGroups }).map((_, groupIndex) => (
-                  <div key={groupIndex} className="flex gap-1">
-                    {Array.from({ length: 4 }).map((_, stepIndex) => {
-                      const step = groupIndex * 4 + stepIndex;
-                      if (step >= pattern.len) return null;
-                      const isAccent = accentSteps.has(step);
-                      const isGhost = ghostSteps.has(step);
-                      const isCurrent = isPlaying && currentStep === step;
-                      const baseClasses = 'w-8 h-8 rounded-md border text-xs font-mono flex items-center justify-center';
-                      let colorClasses = 'border-base-300 text-base-content/50 bg-base-100/50';
-                      if (isGhost) {
-                        colorClasses = 'border-warning/60 text-warning bg-warning/10';
-                      }
-                      if (isAccent) {
-                        colorClasses = 'border-primary/70 text-primary bg-primary/10';
-                      }
-                      const indicator = isCurrent ? 'ring ring-secondary ring-offset-2 ring-offset-base-200' : '';
-                      return (
-                        <div key={step} className={`${baseClasses} ${colorClasses} ${indicator}`}>
-                          {step + 1}
-                        </div>
-                      );
-                    })}
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Arp Shape</h3>
+              <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-100/60 p-3">
+                {arpPreview.length === 0 || !arpNoteScale ? (
+                  <div className="flex h-24 items-center justify-center text-xs text-base-content/60">
+                    Hold a chord to preview the arp path.
                   </div>
-                ))}
+                ) : (
+                  <svg viewBox={`0 0 ${arpChartWidth} ${arpChartHeight}`} className="w-full h-24">
+                    <defs>
+                      <linearGradient id="arpStroke" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--s))" stopOpacity="0.95" />
+                        <stop offset="100%" stopColor="hsl(var(--s))" stopOpacity="0.3" />
+                      </linearGradient>
+                    </defs>
+                    <polyline
+                      points={arpPolyline}
+                      fill="none"
+                      stroke="url(#arpStroke)"
+                      strokeWidth="3"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                    {arpPreview.map((stepNotes, stepIndex) => {
+                      const x = (stepIndex / Math.max(1, pattern.len - 1)) * arpChartWidth;
+                      return stepNotes.map((note, noteIndex) => {
+                        const normalized = arpNoteScale.isFlat
+                          ? 0.5
+                          : (note - arpNoteScale.min) / arpNoteScale.span;
+                        const y = arpChartPadding + (1 - normalized) * arpChartInnerHeight;
+                        const isCurrent = isPlaying && currentStep === stepIndex;
+                        const fill = noteIndex === 0 ? 'hsl(var(--s))' : 'hsl(var(--bc))';
+                        return (
+                          <circle
+                            key={`${stepIndex}-${note}-${noteIndex}`}
+                            cx={x}
+                            cy={y}
+                            r={noteIndex === 0 ? 3.5 : 2.5}
+                            fill={fill}
+                            opacity={noteIndex === 0 ? 0.9 : 0.6}
+                            stroke={isCurrent ? 'hsl(var(--a))' : 'none'}
+                            strokeWidth={isCurrent ? 1.5 : 0}
+                          />
+                        );
+                      });
+                    })}
+                  </svg>
+                )}
+                <div className="text-xs text-base-content/70 mt-1">
+                  {arpNoteScale
+                    ? `One-cycle arp path. Range: ${formatNoteLabel(arpNoteScale.min)}${
+                      arpNoteScale.min === arpNoteScale.max ? '' : `-${formatNoteLabel(arpNoteScale.max)}`
+                    }.`
+                    : 'Arp path updates with held notes and mode.'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Pattern Grid</h3>
+              <div className="flex justify-center">
+                <div className="grid grid-cols-8 gap-2 w-full max-w-[26rem]">
+                  {Array.from({ length: pattern.len }).map((_, step) => {
+                    const isAccent = accentSteps.has(step);
+                    const isGhost = ghostSteps.has(step);
+                    const isCurrent = isPlaying && currentStep === step;
+                    const baseClasses = 'aspect-square w-full rounded-md border text-xs font-mono flex items-center justify-center';
+                    let colorClasses = 'border-base-300 text-base-content/50 bg-base-100/50';
+                    if (isGhost) {
+                      colorClasses = 'border-warning/60 text-warning bg-warning/10';
+                    }
+                    if (isAccent) {
+                      colorClasses = 'border-primary/70 text-primary bg-primary/10';
+                    }
+                    const indicator = isCurrent ? 'ring ring-secondary ring-offset-2 ring-offset-base-200' : '';
+                    return (
+                      <div key={step} className={`${baseClasses} ${colorClasses} ${indicator}`}>
+                        {step + 1}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <div className="text-xs text-base-content/70">
                 Accent steps are highlighted in blue; ghost hits use amber. Resolution: {pattern.res} per beat.
