@@ -34,6 +34,8 @@ export enum VoicingStyle {
     Random = 3,
     Converge = 4,
     Diverge = 5,
+    PinkyAnchor = 6,
+    AsPlayed = 7,
 }
 
 export const VOICING_STYLE_LABELS = [
@@ -43,6 +45,8 @@ export const VOICING_STYLE_LABELS = [
     'Random',
     'Converge',
     'Diverge',
+    'Pinky Anchor',
+    'As Played',
 ];
 
 export type PhraseModulation = {

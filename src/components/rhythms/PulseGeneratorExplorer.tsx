@@ -157,17 +157,7 @@ const PATTERNS: PulsePattern[] = [
   },
 ];
 
-const ARP_MODES = [
-  { id: 1, label: 'All Together' },
-  { id: 2, label: 'Up' },
-  { id: 3, label: 'Down' },
-  { id: 4, label: 'Up-Down' },
-  { id: 5, label: 'Random' },
-  { id: 6, label: 'As Played' },
-  { id: 7, label: 'Converge' },
-  { id: 8, label: 'Diverge' },
-  { id: 9, label: 'Pinky Anchor' },
-];
+
 
 const VELOCITY_MODES = [
   { id: 1, label: 'As Played' },
@@ -221,7 +211,7 @@ const formatNoteLabel = (note: number) => `${NOTE_LABELS[note % 12]}${Math.floor
 
 const PulseGeneratorExplorer: React.FC = () => {
   const [patternIndex, setPatternIndex] = useState(0);
-  const [arpMode, setArpMode] = useState(1);
+  const [harmonyMode, setHarmonyMode] = useState(0); // 0 = Mono (Arp), 1 = Poly (Chord)
   const [humanize, setHumanize] = useState(0);
   const [swing, setSwing] = useState(0);
   const [octaveShift, setOctaveShift] = useState(0);
@@ -254,7 +244,6 @@ const PulseGeneratorExplorer: React.FC = () => {
   const timeoutRefs = useRef<number[]>([]);
   const orderRef = useRef(0);
   const arpIndexRef = useRef(1);
-  const arpDirectionRef = useRef(1);
   const prevHeldCountRef = useRef(0);
   const stepRef = useRef(0);
 
@@ -306,7 +295,7 @@ const PulseGeneratorExplorer: React.FC = () => {
       if (stepData && heldNotes.length > 0) {
         const schedulePulse = () => {
           const styledNotes = applyVoicingStyle(heldNotes, voicingStyle);
-          const notes = getNotesToPlay(styledNotes, arpMode, arpIndexRef, arpDirectionRef);
+          const notes = getNotesToPlay(styledNotes, harmonyMode, arpIndexRef);
           playPulse(notes, stepData.velocityScale, stepData.accent, currentPos, pattern.len);
         };
 
@@ -331,7 +320,7 @@ const PulseGeneratorExplorer: React.FC = () => {
     };
     // Restart interval whenever any parameter that affects playback changes so closures stay fresh.
   }, [
-    arpMode,
+    harmonyMode,
     bpm,
     heldNotes,
     humanize,
@@ -356,18 +345,18 @@ const PulseGeneratorExplorer: React.FC = () => {
   useEffect(() => {
     if (heldNotes.length === 0) {
       arpIndexRef.current = 1;
-      arpDirectionRef.current = 1;
     }
   }, [heldNotes]);
 
   useEffect(() => {
     const wasEmpty = prevHeldCountRef.current === 0;
     if (pickup && wasEmpty && heldNotes.length > 0) {
-      const notes = getNotesToPlay(heldNotes, arpMode, arpIndexRef, arpDirectionRef);
+      const styledNotes = applyVoicingStyle(heldNotes, voicingStyle);
+      const notes = getNotesToPlay(styledNotes, harmonyMode, arpIndexRef);
       playPulse(notes, 1.0, true, 0, pattern.len);
     }
     prevHeldCountRef.current = heldNotes.length;
-  }, [arpMode, heldNotes, pattern.len, pickup]);
+  }, [harmonyMode, heldNotes, pattern.len, pickup, voicingStyle]);
 
   const playPulse = (
     notesToPlay: HeldNote[],
@@ -515,12 +504,14 @@ const PulseGeneratorExplorer: React.FC = () => {
   const arpPreview = useMemo(() => {
     if (heldNotes.length === 0) return [];
     const localIndexRef = { current: 1 };
-    const localDirectionRef = { current: 1 };
+
+    const styledNotes = applyVoicingStyle(heldNotes, voicingStyle);
+
     return Array.from({ length: pattern.len }, () => {
-      const notes = getNotesToPlay(heldNotes, arpMode, localIndexRef, localDirectionRef);
+      const notes = getNotesToPlay(styledNotes, harmonyMode, localIndexRef);
       return notes.map(noteData => clamp(noteData.note + (octaveShift * 12), 0, 127));
     });
-  }, [arpMode, heldNotes, octaveShift, pattern.len]);
+  }, [harmonyMode, heldNotes, octaveShift, pattern.len, voicingStyle]);
 
   const arpNoteScale = useMemo(() => {
     if (arpPreview.length === 0) return null;
@@ -650,17 +641,77 @@ const PulseGeneratorExplorer: React.FC = () => {
                   </select>
                 </label>
                 <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Arp Mode</span>
+                  <span className="label-text text-xs uppercase tracking-wide">Harmony</span>
                   <select
                     className="select select-bordered select-sm mt-1"
-                    value={arpMode}
-                    onChange={event => setArpMode(Number(event.target.value))}
+                    value={harmonyMode}
+                    onChange={event => setHarmonyMode(Number(event.target.value))}
                   >
-                    {ARP_MODES.map(mode => (
-                      <option key={mode.id} value={mode.id}>
-                        {mode.label}
-                      </option>
-                    ))}
+                    <option value={0}>Mono (Arp)</option>
+                    <option value={1}>Poly (Chord)</option>
+                  </select>
+                </label>
+                <label className="form-control w-48">
+                  <span className="label-text text-xs uppercase tracking-wide">Length</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={32}
+                    value={patternLength ?? pattern.len}
+                    className="range range-xs mt-2"
+                    onChange={event => setPatternLength(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">
+                    {patternLength ?? pattern.len} steps
+                  </span>
+                </label>
+                <label className="form-control w-32">
+                  <span className="label-text text-xs uppercase tracking-wide">Humanize</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={30}
+                    value={humanize}
+                    className="range range-xs mt-2"
+                    onChange={event => setHumanize(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">{humanize}</span>
+                </label>
+                <label className="form-control w-32">
+                  <span className="label-text text-xs uppercase tracking-wide">Swing</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={swing}
+                    className="range range-xs mt-2"
+                    onChange={event => setSwing(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">{swing}%</span>
+                </label>
+                <label className="form-control w-28">
+                  <span className="label-text text-xs uppercase tracking-wide">Octave</span>
+                  <input
+                    type="range"
+                    min={-2}
+                    max={2}
+                    value={octaveShift}
+                    className="range range-xs mt-2"
+                    onChange={event => setOctaveShift(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">
+                    {octaveShift >= 0 ? `+${octaveShift}` : octaveShift}
+                  </span>
+                </label>
+                <label className="form-control w-28">
+                  <span className="label-text text-xs uppercase tracking-wide">Pickup</span>
+                  <select
+                    className="select select-bordered select-sm mt-1"
+                    value={pickup ? 'on' : 'off'}
+                    onChange={event => setPickup(event.target.value === 'on')}
+                  >
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
                   </select>
                 </label>
               </div>
@@ -728,84 +779,9 @@ const PulseGeneratorExplorer: React.FC = () => {
             </div>
           </div>
 
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide mt-0">Performance</h3>
-              <div className="flex flex-wrap gap-3">
-                <label className="form-control w-32">
-                  <span className="label-text text-xs">Humanize</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={30}
-                    value={humanize}
-                    className="range range-xs mt-1"
-                    onChange={event => setHumanize(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{humanize}</span>
-                </label>
-                <label className="form-control w-32">
-                  <span className="label-text text-xs">Swing</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={swing}
-                    className="range range-xs mt-1"
-                    onChange={event => setSwing(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{swing}%</span>
-                </label>
-                <label className="form-control w-28">
-                  <span className="label-text text-xs">Octave</span>
-                  <input
-                    type="range"
-                    min={-2}
-                    max={2}
-                    value={octaveShift}
-                    className="range range-xs mt-1"
-                    onChange={event => setOctaveShift(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">
-                    {octaveShift >= 0 ? `+${octaveShift}` : octaveShift}
-                  </span>
-                </label>
-                <label className="form-control w-28">
-                  <span className="label-text text-xs">Pickup</span>
-                  <select
-                    className="select select-bordered select-xs mt-1"
-                    value={pickup ? 'on' : 'off'}
-                    onChange={event => setPickup(event.target.value === 'on')}
-                  >
-                    <option value="on">On</option>
-                    <option value="off">Off</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-          </div>
 
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Pattern Shape (T-1)</h3>
-              <div className="flex flex-wrap gap-4">
-                <label className="form-control w-48">
-                  <span className="label-text text-xs uppercase tracking-wide">Length</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={32}
-                    value={patternLength ?? pattern.len}
-                    className="range range-xs mt-2"
-                    onChange={event => setPatternLength(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">
-                    {patternLength ?? pattern.len} steps
-                  </span>
-                </label>
-              </div>
-            </div>
-          </div>
+
+
 
           <div className="card bg-base-200/70">
             <div className="card-body space-y-4">
@@ -925,6 +901,10 @@ const PulseGeneratorExplorer: React.FC = () => {
             </div>
           </div>
 
+
+        </div>
+
+        <div className="space-y-4">
           <div className="card bg-base-200/70">
             <div className="card-body space-y-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -980,9 +960,6 @@ const PulseGeneratorExplorer: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-4">
           <div className="card bg-base-200/70">
             <div className="card-body space-y-3">
               <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Velocity Shape</h3>
@@ -1021,6 +998,18 @@ const PulseGeneratorExplorer: React.FC = () => {
                       />
                     );
                   })}
+                  {isPlaying && (
+                    <line
+                      x1={`${(currentStep / Math.max(1, pattern.len - 1)) * 100}%`}
+                      y1="0"
+                      x2={`${(currentStep / Math.max(1, pattern.len - 1)) * 100}%`}
+                      y2="100%"
+                      stroke="hsl(var(--p))"
+                      strokeWidth="2"
+                      opacity="0.8"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )}
                 </svg>
                 <div className="text-xs text-base-content/70 mt-1">
                   Per-step velocity after shaping (accent/ghost/fixed/ramp). Blue = accent, amber = ghost.
@@ -1076,6 +1065,18 @@ const PulseGeneratorExplorer: React.FC = () => {
                         );
                       });
                     })}
+                    {isPlaying && (
+                      <line
+                        x1={`${(currentStep / Math.max(1, pattern.len - 1)) * 100}%`}
+                        y1="0"
+                        x2={`${(currentStep / Math.max(1, pattern.len - 1)) * 100}%`}
+                        y2="100%"
+                        stroke="hsl(var(--p))"
+                        strokeWidth="2"
+                        opacity="0.8"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
                   </svg>
                 )}
                 <div className="text-xs text-base-content/70 mt-1">
@@ -1134,6 +1135,18 @@ const PulseGeneratorExplorer: React.FC = () => {
                         />
                       );
                     })}
+                    {isPlaying && (
+                      <line
+                        x1={`${(currentStep / Math.max(1, pattern.len - 1)) * 100}%`}
+                        y1="0"
+                        x2={`${(currentStep / Math.max(1, pattern.len - 1)) * 100}%`}
+                        y2="100%"
+                        stroke="hsl(var(--p))"
+                        strokeWidth="2"
+                        opacity="0.8"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
                   </svg>
                 )}
                 <div className="text-xs text-base-content/70 mt-1">
@@ -1177,18 +1190,7 @@ const PulseGeneratorExplorer: React.FC = () => {
             </div>
           </div>
 
-          <div className="card bg-base-200/70">
-            <div className="card-body space-y-2 text-sm text-base-content/70">
-              <p>
-                Load a chord, press play, and tweak rate, gate, swing, and velocity shaping to audition pulse feels.
-                Arp modes follow the same ordering as your Falcon script.
-              </p>
-              <p>
-                Tip: Try Pinky Anchor with a low octave shift for cinematic ostinatos, or switch to Accent Pattern
-                mode to hear the built-in groove in each template.
-              </p>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
@@ -1246,7 +1248,7 @@ const applyVoicingStyle = (
 ): HeldNote[] => {
   if (notes.length === 0) return notes;
 
-  const sorted = [...notes];
+  let sorted = [...notes];
 
   switch (style) {
     case VoicingStyle.Up:
@@ -1256,7 +1258,17 @@ const applyVoicingStyle = (
       sorted.sort((a, b) => b.note - a.note);
       break;
     case VoicingStyle.UpDown:
+      // A, B, C -> A, B, C, B
       sorted.sort((a, b) => a.note - b.note);
+      if (sorted.length > 2) {
+        const up = [...sorted];
+        const down = sorted.slice(1, -1).reverse();
+        sorted = [...up, ...down];
+      } else if (sorted.length === 2) {
+        // A, B -> A, B (simple up down is just A B? or A B A?)
+        // Usually Up-Down on 2 notes is A B. On 3 notes A B C B.
+        // Let's keep it simple for 2 notes.
+      }
       break;
     case VoicingStyle.Random:
       for (let i = sorted.length - 1; i > 0; i -= 1) {
@@ -1279,7 +1291,8 @@ const applyVoicingStyle = (
         left += 1;
         right -= 1;
       }
-      return converged;
+      sorted = converged;
+      break;
     case VoicingStyle.Diverge:
       sorted.sort((a, b) => a.note - b.note);
       const diverged: HeldNote[] = [];
@@ -1295,7 +1308,25 @@ const applyVoicingStyle = (
         l += 1;
         r -= 1;
       }
-      return diverged.reverse();
+      sorted = diverged.reverse();
+      break;
+    case VoicingStyle.PinkyAnchor:
+      // Lowest note acts as anchor: A, B, C -> A, B, A, C...
+      sorted.sort((a, b) => a.note - b.note);
+      if (sorted.length > 2) {
+        const anchor = sorted[0];
+        const rest = sorted.slice(1);
+        const result: HeldNote[] = [];
+        rest.forEach((note) => {
+          result.push(anchor);
+          result.push(note);
+        });
+        sorted = result;
+      }
+      break;
+    case VoicingStyle.AsPlayed:
+      sorted.sort((a, b) => a.order - b.order);
+      break;
   }
 
   return sorted;
@@ -1373,75 +1404,26 @@ const getSortedNotes = (notes: HeldNote[], mode: number): HeldNote[] => {
 };
 
 const getNotesToPlay = (
-  heldNotes: HeldNote[],
-  arpMode: number,
+  voicedNotes: HeldNote[],
+  harmonyMode: number, // 0 = Mono, 1 = Poly
   arpIndexRef: React.MutableRefObject<number>,
-  arpDirectionRef: React.MutableRefObject<number>,
 ): HeldNote[] => {
-  if (heldNotes.length === 0) return [];
+  if (voicedNotes.length === 0) return [];
 
-  const sorted = getSortedNotes(heldNotes, arpMode);
-
-  if (arpMode === 9) {
-    if (sorted.length < 2) {
-      return [sorted[0]];
-    }
-    const anchor = sorted[0];
-    const rest = sorted.slice(1).sort((a, b) => a.note - b.note);
-    const restIndex = ((arpIndexRef.current - 1) % rest.length);
-    arpIndexRef.current += 1;
-    return [anchor, rest[restIndex]];
+  // Poly (Chord) Mode: Play all voiced notes together
+  if (harmonyMode === 1) {
+    return voicedNotes;
   }
 
-  if (arpMode === 1) {
-    return sorted;
+  // Mono (Arp) Mode: Cycle through notes
+  if (arpIndexRef.current >= voicedNotes.length) {
+    arpIndexRef.current = 0;
   }
 
-  let pool = [...sorted];
-  if (arpMode === 7 || arpMode === 8) {
-    pool.sort((a, b) => a.note - b.note);
-    const converged: HeldNote[] = [];
-    let left = 0;
-    let right = pool.length - 1;
-    while (left <= right) {
-      if (left === right) {
-        converged.push(pool[left]);
-      } else {
-        converged.push(pool[left]);
-        converged.push(pool[right]);
-      }
-      left += 1;
-      right -= 1;
-    }
-    pool = arpMode === 8 ? converged.reverse() : converged;
-  }
+  const note = voicedNotes[arpIndexRef.current];
+  arpIndexRef.current = (arpIndexRef.current + 1) % voicedNotes.length;
 
-  if (arpIndexRef.current > pool.length) {
-    arpIndexRef.current = 1;
-  }
-  if (arpIndexRef.current < 1) {
-    arpIndexRef.current = pool.length;
-  }
-
-  const result = [pool[arpIndexRef.current - 1]];
-
-  if (arpMode === 4) {
-    arpIndexRef.current += arpDirectionRef.current;
-    if (arpIndexRef.current > sorted.length) {
-      arpDirectionRef.current = -1;
-      arpIndexRef.current = Math.max(1, sorted.length - 1);
-    } else if (arpIndexRef.current < 1) {
-      arpDirectionRef.current = 1;
-      arpIndexRef.current = Math.min(sorted.length, 2);
-    }
-  } else {
-    arpIndexRef.current += 1;
-    if (arpIndexRef.current > pool.length) {
-      arpIndexRef.current = 1;
-    }
-  }
-
-  return result;
+  return [note];
 };
 
 const calculateVelocity = (
