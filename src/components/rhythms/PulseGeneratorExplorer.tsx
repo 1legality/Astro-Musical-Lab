@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SynthChordPlayer } from '../../lib/chords/SynthChordPlayer';
+import { ModulationShape, MODULATION_SHAPE_LABELS, VoicingStyle, VOICING_STYLE_LABELS } from './repeat_types';
 
 type PatternStep = {
   position: number;
@@ -176,7 +177,15 @@ const VELOCITY_MODES = [
   { id: 5, label: 'Ramp Down' },
 ];
 
-const RATE_OPTIONS = [
+const DIVISION_OPTIONS = [
+  { label: '1/4x', value: 0.25 },
+  { label: '1/2x', value: 0.5 },
+  { label: '1x', value: 1.0 },
+  { label: '2x', value: 2.0 },
+  { label: '4x', value: 4.0 },
+];
+
+const REPEAT_TIME_OPTIONS = [
   { label: '1/4x', value: 0.25 },
   { label: '1/2x', value: 0.5 },
   { label: '1x', value: 1.0 },
@@ -196,28 +205,49 @@ const CHORD_PRESETS = [
   { label: 'Bdim', root: 11, intervals: [0, 3, 6] },
 ];
 
+const GROOVE_TEMPLATES = [
+  { id: 0, label: 'None' },
+  { id: 1, label: 'Swing 16' },
+  { id: 2, label: 'Shuffle' },
+  { id: 3, label: 'Dotted' },
+  { id: 4, label: 'Sine Wave' },
+  { id: 5, label: 'Triangle' },
+  { id: 6, label: 'Sawtooth' },
+  { id: 7, label: 'Square' },
+];
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const formatNoteLabel = (note: number) => `${NOTE_LABELS[note % 12]}${Math.floor(note / 12) - 1}`;
 
 const PulseGeneratorExplorer: React.FC = () => {
   const [patternIndex, setPatternIndex] = useState(0);
   const [arpMode, setArpMode] = useState(1);
-  const [velocityMode, setVelocityMode] = useState(1);
-  const [gate, setGate] = useState(50);
-  const [inputVelocity, setInputVelocity] = useState(96);
-  const [fixedVelocity, setFixedVelocity] = useState(100);
-  const [accentVelocity, setAccentVelocity] = useState(120);
-  const [ghostVelocity, setGhostVelocity] = useState(60);
   const [humanize, setHumanize] = useState(0);
   const [swing, setSwing] = useState(0);
   const [octaveShift, setOctaveShift] = useState(0);
-  const [rateIndex, setRateIndex] = useState(2);
+  const [divisionIndex, setDivisionIndex] = useState(2);
   const [pickup, setPickup] = useState(true);
   const [bpm, setBpm] = useState(120);
   const [inputOctave, setInputOctave] = useState(4);
   const [heldNotes, setHeldNotes] = useState<HeldNote[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+
+  // T-1 Parameters
+  const [patternLength, setPatternLength] = useState<number | null>(null);
+  const [repeatCount, setRepeatCount] = useState(0);
+  const [repeatTimeIndex, setRepeatTimeIndex] = useState(2);
+  const [repeatPace, setRepeatPace] = useState(0);
+  const [repeatOffset, setRepeatOffset] = useState(0);
+  const [voicingStyle, setVoicingStyle] = useState(VoicingStyle.Up);
+  const [rangeAmount, setRangeAmount] = useState(0);
+  const [phraseShape, setPhraseShape] = useState(ModulationShape.Sine);
+
+  // T-1 Velocity & Groove
+  const [velocity, setVelocity] = useState(100);
+  const [accent, setAccent] = useState(50);
+  const [sustain, setSustain] = useState(75);
+  const [grooveTemplate, setGrooveTemplate] = useState(0);
 
   const synthRef = useRef<SynthChordPlayer | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -265,8 +295,8 @@ const PulseGeneratorExplorer: React.FC = () => {
 
     if (typeof window === 'undefined') return;
 
-    const rate = RATE_OPTIONS[rateIndex]?.value ?? 1.0;
-    const stepMs = (60 / Math.max(1, bpm)) * 1000 / pattern.res / rate;
+    const division = DIVISION_OPTIONS[divisionIndex]?.value ?? 1.0;
+    const stepMs = (60 / Math.max(1, bpm)) * 1000 / pattern.res / division;
 
     intervalRef.current = window.setInterval(() => {
       const currentPos = stepRef.current % pattern.len;
@@ -275,7 +305,8 @@ const PulseGeneratorExplorer: React.FC = () => {
       const stepData = pattern.steps.find(step => step.position === currentPos);
       if (stepData && heldNotes.length > 0) {
         const schedulePulse = () => {
-          const notes = getNotesToPlay(heldNotes, arpMode, arpIndexRef, arpDirectionRef);
+          const styledNotes = applyVoicingStyle(heldNotes, voicingStyle);
+          const notes = getNotesToPlay(styledNotes, arpMode, arpIndexRef, arpDirectionRef);
           playPulse(notes, stepData.velocityScale, stepData.accent, currentPos, pattern.len);
         };
 
@@ -300,20 +331,26 @@ const PulseGeneratorExplorer: React.FC = () => {
     };
     // Restart interval whenever any parameter that affects playback changes so closures stay fresh.
   }, [
-    accentVelocity,
     arpMode,
     bpm,
-    fixedVelocity,
-    gate,
-    ghostVelocity,
     heldNotes,
     humanize,
     isPlaying,
     octaveShift,
     pattern,
-    rateIndex,
+    divisionIndex,
     swing,
-    velocityMode,
+    repeatCount,
+    repeatTimeIndex,
+    repeatPace,
+    repeatOffset,
+    voicingStyle,
+    rangeAmount,
+    phraseShape,
+    velocity,
+    accent,
+    sustain,
+    grooveTemplate,
   ]);
 
   useEffect(() => {
@@ -341,21 +378,19 @@ const PulseGeneratorExplorer: React.FC = () => {
   ) => {
     if (!synthRef.current || notesToPlay.length === 0) return;
 
-    const rate = RATE_OPTIONS[rateIndex]?.value ?? 1.0;
-    const stepDurationSeconds = (60 / Math.max(1, bpm)) / pattern.res / rate;
-    const durationSeconds = stepDurationSeconds * (gate / 100) * 4;
+    const division = DIVISION_OPTIONS[divisionIndex]?.value ?? 1.0;
+    const stepDurationSeconds = (60 / Math.max(1, bpm)) / pattern.res / division;
+    const durationSeconds = stepDurationSeconds * (sustain / 100) * 4;
 
     const velocities = notesToPlay.map(noteData =>
       calculateVelocity(
-        noteData.velocity,
+        velocity,
         velocityScale,
         isAccent,
         patternPos,
         patternLen,
-        velocityMode,
-        fixedVelocity,
-        accentVelocity,
-        ghostVelocity,
+        accent,
+        grooveTemplate,
         humanize,
       ),
     );
@@ -364,8 +399,47 @@ const PulseGeneratorExplorer: React.FC = () => {
     const volume = clamp(0.08 + (velocityPeak / 127) * 0.5, 0.05, 0.9);
     synthRef.current.setVolume(volume);
 
-    const shifted = notesToPlay.map(noteData => clamp(noteData.note + (octaveShift * 12), 0, 127));
+    // Apply phrase modulation to notes
+    const phraseModulation = calculatePhraseModulation(
+      patternPos,
+      patternLen,
+      phraseShape,
+      rangeAmount
+    );
+
+    const shifted = notesToPlay.map(noteData =>
+      clamp(noteData.note + (octaveShift * 12) + phraseModulation, 0, 127)
+    );
+
+    // Play main pulse
     synthRef.current.playChord(shifted, durationSeconds, velocities);
+
+    // Generate and schedule repeats
+    if (repeatCount > 0) {
+      const repeatTime = REPEAT_TIME_OPTIONS[repeatTimeIndex]?.value ?? 1.0;
+      const stepMs = stepDurationSeconds * 1000;
+      const avgVelocity = velocities.reduce((sum, v) => sum + v, 0) / velocities.length;
+
+      const repeats = generateRepeats(
+        notesToPlay,
+        repeatCount,
+        repeatTime,
+        repeatPace,
+        repeatOffset,
+        stepMs,
+        avgVelocity
+      );
+
+      repeats.forEach(repeat => {
+        const timeoutId = window.setTimeout(() => {
+          if (synthRef.current) {
+            const repeatShifted = clamp(repeat.note + (octaveShift * 12) + phraseModulation, 0, 127);
+            synthRef.current.playChord([repeatShifted], durationSeconds * 0.7, [repeat.velocity]);
+          }
+        }, repeat.delayMs);
+        timeoutRefs.current.push(timeoutId);
+      });
+    }
   };
 
   const toggleNote = (note: number) => {
@@ -376,7 +450,7 @@ const PulseGeneratorExplorer: React.FC = () => {
         return prev.filter(entry => entry.note !== note);
       }
       orderRef.current += 1;
-      return [...prev, { note, velocity: inputVelocity, order: orderRef.current }];
+      return [...prev, { note, velocity, order: orderRef.current }];
     });
   };
 
@@ -387,7 +461,7 @@ const PulseGeneratorExplorer: React.FC = () => {
     const baseOrder = orderRef.current + 1;
     const next = notes.map((note, index) => ({
       note,
-      velocity: inputVelocity,
+      velocity,
       order: baseOrder + index,
     }));
     orderRef.current = baseOrder + intervals.length - 1;
@@ -408,20 +482,18 @@ const PulseGeneratorExplorer: React.FC = () => {
     const values: number[] = Array.from({ length: pattern.len }, () => 0);
     pattern.steps.forEach(step => {
       values[step.position] = calculateVelocity(
-        inputVelocity,
+        velocity,
         step.velocityScale,
         step.accent,
         step.position,
         pattern.len,
-        velocityMode,
-        fixedVelocity,
-        accentVelocity,
-        ghostVelocity,
+        accent,
+        grooveTemplate,
         0, // keep preview stable; ignore humanize randomness
       );
     });
     return values;
-  }, [accentVelocity, fixedVelocity, ghostVelocity, inputVelocity, pattern, velocityMode]);
+  }, [accent, grooveTemplate, velocity, pattern]);
 
   const velocityChartHeight = 80;
   const velocityChartPadding = 6;
@@ -564,13 +636,13 @@ const PulseGeneratorExplorer: React.FC = () => {
                   </select>
                 </label>
                 <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Rate</span>
+                  <span className="label-text text-xs uppercase tracking-wide">Division</span>
                   <select
                     className="select select-bordered select-sm mt-1"
-                    value={rateIndex}
-                    onChange={event => setRateIndex(Number(event.target.value))}
+                    value={divisionIndex}
+                    onChange={event => setDivisionIndex(Number(event.target.value))}
                   >
-                    {RATE_OPTIONS.map((entry, index) => (
+                    {DIVISION_OPTIONS.map((entry, index) => (
                       <option key={entry.label} value={index}>
                         {entry.label}
                       </option>
@@ -591,126 +663,117 @@ const PulseGeneratorExplorer: React.FC = () => {
                     ))}
                   </select>
                 </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Velocity & Groove (T-1)</h3>
+              <div className="flex flex-wrap gap-4">
                 <label className="form-control w-40">
                   <span className="label-text text-xs uppercase tracking-wide">Velocity</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={127}
+                    value={velocity}
+                    className="range range-xs mt-2"
+                    onChange={event => setVelocity(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">{velocity}</span>
+                </label>
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Accent</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={accent}
+                    className="range range-xs mt-2"
+                    onChange={event => setAccent(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">{accent}</span>
+                </label>
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Sustain</span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={100}
+                    value={sustain}
+                    className="range range-xs mt-2"
+                    onChange={event => setSustain(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">{sustain}%</span>
+                </label>
+                <label className="form-control w-48">
+                  <span className="label-text text-xs uppercase tracking-wide">Groove Template</span>
                   <select
                     className="select select-bordered select-sm mt-1"
-                    value={velocityMode}
-                    onChange={event => setVelocityMode(Number(event.target.value))}
+                    value={grooveTemplate}
+                    onChange={event => setGrooveTemplate(Number(event.target.value))}
                   >
-                    {VELOCITY_MODES.map(mode => (
-                      <option key={mode.id} value={mode.id}>
-                        {mode.label}
+                    {GROOVE_TEMPLATES.map(template => (
+                      <option key={template.id} value={template.id}>
+                        {template.label}
                       </option>
                     ))}
                   </select>
                 </label>
               </div>
-              <div className="flex flex-wrap gap-4">
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Gate</span>
-                  <input
-                    type="range"
-                    min={5}
-                    max={100}
-                    value={gate}
-                    className="range range-xs mt-2"
-                    onChange={event => setGate(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{gate}%</span>
-                </label>
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Humanize</span>
+              <div className="text-xs text-base-content/70">
+                Velocity: base note velocity. Accent: boost for accented steps. Sustain: note length. Groove: velocity modulation pattern.
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide mt-0">Performance</h3>
+              <div className="flex flex-wrap gap-3">
+                <label className="form-control w-32">
+                  <span className="label-text text-xs">Humanize</span>
                   <input
                     type="range"
                     min={0}
                     max={30}
                     value={humanize}
-                    className="range range-xs mt-2"
+                    className="range range-xs mt-1"
                     onChange={event => setHumanize(Number(event.target.value))}
                   />
                   <span className="text-xs font-mono text-right text-base-content/70">{humanize}</span>
                 </label>
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Swing</span>
+                <label className="form-control w-32">
+                  <span className="label-text text-xs">Swing</span>
                   <input
                     type="range"
                     min={0}
                     max={100}
                     value={swing}
-                    className="range range-xs mt-2"
+                    className="range range-xs mt-1"
                     onChange={event => setSwing(Number(event.target.value))}
                   />
                   <span className="text-xs font-mono text-right text-base-content/70">{swing}%</span>
                 </label>
-                <label className="form-control w-36">
-                  <span className="label-text text-xs uppercase tracking-wide">Octave</span>
+                <label className="form-control w-28">
+                  <span className="label-text text-xs">Octave</span>
                   <input
                     type="range"
                     min={-2}
                     max={2}
                     value={octaveShift}
-                    className="range range-xs mt-2"
+                    className="range range-xs mt-1"
                     onChange={event => setOctaveShift(Number(event.target.value))}
                   />
                   <span className="text-xs font-mono text-right text-base-content/70">
                     {octaveShift >= 0 ? `+${octaveShift}` : octaveShift}
                   </span>
                 </label>
-              </div>
-              <div className="flex flex-wrap gap-4">
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Input Velocity</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={127}
-                    value={inputVelocity}
-                    className="range range-xs mt-2"
-                    onChange={event => setInputVelocity(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{inputVelocity}</span>
-                </label>
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Fixed Vel</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={127}
-                    value={fixedVelocity}
-                    className="range range-xs mt-2"
-                    onChange={event => setFixedVelocity(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{fixedVelocity}</span>
-                </label>
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Accent Vel</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={127}
-                    value={accentVelocity}
-                    className="range range-xs mt-2"
-                    onChange={event => setAccentVelocity(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{accentVelocity}</span>
-                </label>
-                <label className="form-control w-40">
-                  <span className="label-text text-xs uppercase tracking-wide">Ghost Vel</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={127}
-                    value={ghostVelocity}
-                    className="range range-xs mt-2"
-                    onChange={event => setGhostVelocity(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">{ghostVelocity}</span>
-                </label>
-                <label className="form-control w-32">
-                  <span className="label-text text-xs uppercase tracking-wide">Pickup</span>
+                <label className="form-control w-28">
+                  <span className="label-text text-xs">Pickup</span>
                   <select
-                    className="select select-bordered select-sm mt-1"
+                    className="select select-bordered select-xs mt-1"
                     value={pickup ? 'on' : 'off'}
                     onChange={event => setPickup(event.target.value === 'on')}
                   >
@@ -718,6 +781,146 @@ const PulseGeneratorExplorer: React.FC = () => {
                     <option value="off">Off</option>
                   </select>
                 </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Pattern Shape (T-1)</h3>
+              <div className="flex flex-wrap gap-4">
+                <label className="form-control w-48">
+                  <span className="label-text text-xs uppercase tracking-wide">Length</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={32}
+                    value={patternLength ?? pattern.len}
+                    className="range range-xs mt-2"
+                    onChange={event => setPatternLength(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">
+                    {patternLength ?? pattern.len} steps
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Repeats (T-1)</h3>
+              <div className="flex flex-wrap gap-4">
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Count</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={16}
+                    value={repeatCount}
+                    className="range range-xs mt-2"
+                    onChange={event => setRepeatCount(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">{repeatCount}</span>
+                </label>
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Time</span>
+                  <select
+                    className="select select-bordered select-sm mt-1"
+                    value={repeatTimeIndex}
+                    onChange={event => setRepeatTimeIndex(Number(event.target.value))}
+                  >
+                    {REPEAT_TIME_OPTIONS.map((entry, index) => (
+                      <option key={entry.label} value={index}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Pace</span>
+                  <input
+                    type="range"
+                    min={-100}
+                    max={100}
+                    value={repeatPace}
+                    className="range range-xs mt-2"
+                    onChange={event => setRepeatPace(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">
+                    {repeatPace > 0 ? `+${repeatPace}` : repeatPace}
+                  </span>
+                </label>
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Offset</span>
+                  <input
+                    type="range"
+                    min={-100}
+                    max={100}
+                    value={repeatOffset}
+                    className="range range-xs mt-2"
+                    onChange={event => setRepeatOffset(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">
+                    {repeatOffset > 0 ? `+${repeatOffset}` : repeatOffset}
+                  </span>
+                </label>
+              </div>
+              <div className="text-xs text-base-content/70">
+                Pace: bouncing ball effect (+ = accelerate, - = decelerate). Offset: velocity ramp for repeats.
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Pitch Modulation (T-1)</h3>
+              <div className="flex flex-wrap gap-4">
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Voicing Style</span>
+                  <select
+                    className="select select-bordered select-sm mt-1"
+                    value={voicingStyle}
+                    onChange={event => setVoicingStyle(Number(event.target.value) as VoicingStyle)}
+                  >
+                    {VOICING_STYLE_LABELS.map((label, index) => (
+                      <option key={label} value={index}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-control w-40">
+                  <span className="label-text text-xs uppercase tracking-wide">Range</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={24}
+                    value={rangeAmount}
+                    className="range range-xs mt-2"
+                    onChange={event => setRangeAmount(Number(event.target.value))}
+                  />
+                  <span className="text-xs font-mono text-right text-base-content/70">
+                    {rangeAmount} semitones
+                  </span>
+                </label>
+                <label className="form-control w-48">
+                  <span className="label-text text-xs uppercase tracking-wide">Phrase Shape</span>
+                  <select
+                    className="select select-bordered select-sm mt-1"
+                    value={phraseShape}
+                    onChange={event => setPhraseShape(Number(event.target.value) as ModulationShape)}
+                  >
+                    {MODULATION_SHAPE_LABELS.map((label, index) => (
+                      <option key={label} value={index}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="text-xs text-base-content/70">
+                Range modulates pitch over the pattern cycle using the selected phrase shape.
               </div>
             </div>
           </div>
@@ -877,10 +1080,66 @@ const PulseGeneratorExplorer: React.FC = () => {
                 )}
                 <div className="text-xs text-base-content/70 mt-1">
                   {arpNoteScale
-                    ? `One-cycle arp path. Range: ${formatNoteLabel(arpNoteScale.min)}${
-                      arpNoteScale.min === arpNoteScale.max ? '' : `-${formatNoteLabel(arpNoteScale.max)}`
+                    ? `One-cycle arp path. Range: ${formatNoteLabel(arpNoteScale.min)}${arpNoteScale.min === arpNoteScale.max ? '' : `-${formatNoteLabel(arpNoteScale.max)}`
                     }.`
                     : 'Arp path updates with held notes and mode.'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-200/70">
+            <div className="card-body space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Phrase Modulation (T-1)</h3>
+              <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-100/60 p-3">
+                {rangeAmount === 0 ? (
+                  <div className="flex h-24 items-center justify-center text-xs text-base-content/60">
+                    Set Range amount to preview phrase modulation.
+                  </div>
+                ) : (
+                  <svg viewBox={`0 0 ${Math.max(1, pattern.len - 1) * 12} 80`} className="w-full h-24">
+                    <defs>
+                      <linearGradient id="phraseStroke" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--a))" stopOpacity="0.95" />
+                        <stop offset="100%" stopColor="hsl(var(--a))" stopOpacity="0.3" />
+                      </linearGradient>
+                    </defs>
+                    <polyline
+                      points={Array.from({ length: pattern.len }, (_, idx) => {
+                        const x = (idx / Math.max(1, pattern.len - 1)) * Math.max(1, pattern.len - 1) * 12;
+                        const modulation = calculatePhraseModulation(idx, pattern.len, phraseShape, rangeAmount);
+                        const normalized = (modulation + rangeAmount) / (rangeAmount * 2);
+                        const y = 6 + (1 - normalized) * 68;
+                        return `${x},${y}`;
+                      }).join(' ')}
+                      fill="none"
+                      stroke="url(#phraseStroke)"
+                      strokeWidth="3"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                    {Array.from({ length: pattern.len }, (_, idx) => {
+                      const x = (idx / Math.max(1, pattern.len - 1)) * Math.max(1, pattern.len - 1) * 12;
+                      const modulation = calculatePhraseModulation(idx, pattern.len, phraseShape, rangeAmount);
+                      const normalized = (modulation + rangeAmount) / (rangeAmount * 2);
+                      const y = 6 + (1 - normalized) * 68;
+                      return (
+                        <circle
+                          key={idx}
+                          cx={x}
+                          cy={y}
+                          r={3}
+                          fill="hsl(var(--a))"
+                          opacity="0.9"
+                        />
+                      );
+                    })}
+                  </svg>
+                )}
+                <div className="text-xs text-base-content/70 mt-1">
+                  {rangeAmount > 0
+                    ? `Pitch modulation: ±${rangeAmount} semitones using ${MODULATION_SHAPE_LABELS[phraseShape]} shape.`
+                    : 'Phrase modulation visualizes pitch shifts over the pattern cycle.'}
                 </div>
               </div>
             </div>
@@ -934,6 +1193,164 @@ const PulseGeneratorExplorer: React.FC = () => {
       </div>
     </div>
   );
+};
+
+// T-1 Helper Functions
+
+const calculatePhraseModulation = (
+  position: number,
+  length: number,
+  shape: ModulationShape,
+  amount: number,
+): number => {
+  if (amount === 0) return 0;
+
+  const progress = position / Math.max(1, length - 1);
+  let modValue = 0;
+
+  switch (shape) {
+    case ModulationShape.Sine:
+      modValue = Math.sin(progress * Math.PI * 2);
+      break;
+    case ModulationShape.Triangle:
+      modValue = progress < 0.5
+        ? progress * 4 - 1
+        : 3 - progress * 4;
+      break;
+    case ModulationShape.Sawtooth:
+      modValue = progress * 2 - 1;
+      break;
+    case ModulationShape.ReverseSaw:
+      modValue = 1 - progress * 2;
+      break;
+    case ModulationShape.Square:
+      modValue = progress < 0.5 ? -1 : 1;
+      break;
+    case ModulationShape.Random:
+      modValue = Math.random() * 2 - 1;
+      break;
+    case ModulationShape.SampleHold:
+      modValue = Math.floor(progress * 8) % 2 === 0 ? -1 : 1;
+      break;
+    case ModulationShape.Exponential:
+      modValue = Math.pow(progress, 2) * 2 - 1;
+      break;
+  }
+
+  return Math.round(modValue * amount);
+};
+
+const applyVoicingStyle = (
+  notes: HeldNote[],
+  style: VoicingStyle,
+): HeldNote[] => {
+  if (notes.length === 0) return notes;
+
+  const sorted = [...notes];
+
+  switch (style) {
+    case VoicingStyle.Up:
+      sorted.sort((a, b) => a.note - b.note);
+      break;
+    case VoicingStyle.Down:
+      sorted.sort((a, b) => b.note - a.note);
+      break;
+    case VoicingStyle.UpDown:
+      sorted.sort((a, b) => a.note - b.note);
+      break;
+    case VoicingStyle.Random:
+      for (let i = sorted.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
+      }
+      break;
+    case VoicingStyle.Converge:
+      sorted.sort((a, b) => a.note - b.note);
+      const converged: HeldNote[] = [];
+      let left = 0;
+      let right = sorted.length - 1;
+      while (left <= right) {
+        if (left === right) {
+          converged.push(sorted[left]);
+        } else {
+          converged.push(sorted[left]);
+          converged.push(sorted[right]);
+        }
+        left += 1;
+        right -= 1;
+      }
+      return converged;
+    case VoicingStyle.Diverge:
+      sorted.sort((a, b) => a.note - b.note);
+      const diverged: HeldNote[] = [];
+      let l = 0;
+      let r = sorted.length - 1;
+      while (l <= r) {
+        if (l === r) {
+          diverged.push(sorted[l]);
+        } else {
+          diverged.push(sorted[l]);
+          diverged.push(sorted[r]);
+        }
+        l += 1;
+        r -= 1;
+      }
+      return diverged.reverse();
+  }
+
+  return sorted;
+};
+
+type RepeatNote = {
+  note: number;
+  velocity: number;
+  delayMs: number;
+};
+
+const generateRepeats = (
+  baseNotes: HeldNote[],
+  repeatCount: number,
+  repeatTime: number,
+  repeatPace: number,
+  repeatOffset: number,
+  baseStepMs: number,
+  baseVelocity: number,
+): RepeatNote[] => {
+  if (repeatCount === 0 || baseNotes.length === 0) return [];
+
+  const repeats: RepeatNote[] = [];
+  const baseDelayMs = baseStepMs * repeatTime;
+
+  for (let i = 1; i <= repeatCount; i++) {
+    const progress = i / repeatCount;
+
+    let delayMs = baseDelayMs * i;
+    if (repeatPace !== 0) {
+      const paceEffect = repeatPace / 100;
+      const acceleration = Math.pow(progress, 1 + paceEffect);
+      delayMs = baseDelayMs * i * acceleration;
+    }
+
+    let velocity = baseVelocity;
+    if (repeatOffset !== 0) {
+      const offsetEffect = repeatOffset / 100;
+      velocity = clamp(
+        baseVelocity + (baseVelocity * offsetEffect * progress),
+        1,
+        127
+      );
+    }
+
+    baseNotes.forEach(noteData => {
+      repeats.push({
+        note: noteData.note,
+        velocity: Math.round(velocity),
+        delayMs,
+      });
+    });
+  }
+
+  return repeats;
 };
 
 const getSortedNotes = (notes: HeldNote[], mode: number): HeldNote[] => {
@@ -1033,28 +1450,52 @@ const calculateVelocity = (
   isAccent: boolean,
   patternPos: number,
   patternLen: number,
-  velocityMode: number,
-  fixedVelocity: number,
-  accentVelocity: number,
-  ghostVelocity: number,
+  accentAmount: number,
+  grooveTemplate: number,
   humanize: number,
 ): number => {
   let velocity = baseVelocity;
 
-  if (velocityMode === 2) {
-    velocity = fixedVelocity;
-  } else if (velocityMode === 3) {
-    velocity = isAccent ? accentVelocity : ghostVelocity;
-  } else if (velocityMode === 4) {
-    const progress = patternPos / Math.max(1, patternLen - 1);
-    velocity = 40 + (progress * 87);
-  } else if (velocityMode === 5) {
-    const progress = patternPos / Math.max(1, patternLen - 1);
-    velocity = 127 - (progress * 87);
-  } else {
-    velocity = Math.floor(velocity * velocityScale);
+  // Apply pattern step velocity scale
+  velocity = Math.floor(velocity * velocityScale);
+
+  // Apply accent
+  if (isAccent && accentAmount > 0) {
+    velocity += Math.floor((accentAmount / 100) * 40); // Up to +40 velocity for accents
   }
 
+  // Apply groove template modulation
+  if (grooveTemplate > 0) {
+    const progress = patternPos / Math.max(1, patternLen - 1);
+    let grooveMod = 0;
+
+    switch (grooveTemplate) {
+      case 1: // Swing 16
+        grooveMod = (patternPos % 2) === 1 ? -10 : 0;
+        break;
+      case 2: // Shuffle
+        grooveMod = (patternPos % 3) === 2 ? -15 : 0;
+        break;
+      case 3: // Dotted
+        grooveMod = (patternPos % 3) === 0 ? 10 : -5;
+        break;
+      case 4: // Sine Wave
+        grooveMod = Math.floor(Math.sin(progress * Math.PI * 2) * 15);
+        break;
+      case 5: // Triangle
+        grooveMod = Math.floor((progress < 0.5 ? progress * 4 - 1 : 3 - progress * 4) * 15);
+        break;
+      case 6: // Sawtooth
+        grooveMod = Math.floor((progress * 2 - 1) * 15);
+        break;
+      case 7: // Square
+        grooveMod = progress < 0.5 ? -15 : 15;
+        break;
+    }
+    velocity += grooveMod;
+  }
+
+  // Apply humanize
   if (humanize > 0) {
     velocity += Math.floor((Math.random() * (humanize * 2 + 1)) - humanize);
   }
