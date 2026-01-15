@@ -1067,7 +1067,7 @@ const PulseGeneratorExplorer: React.FC = () => {
                         y1="0"
                         x2={playheadPercent}
                         y2="100%"
-                        stroke="hsl(var(--p))"
+                        className="stroke-secondary"
                         strokeWidth="2"
                         opacity="0.8"
                         vectorEffect="non-scaling-stroke"
@@ -1077,8 +1077,7 @@ const PulseGeneratorExplorer: React.FC = () => {
                           cx={velocityPlayhead.x}
                           cy={velocityPlayhead.y}
                           r={5}
-                          fill="hsl(var(--p))"
-                          stroke="hsl(var(--bc))"
+                          className="fill-secondary stroke-secondary"
                           strokeWidth="1"
                           opacity="0.95"
                         />
@@ -1147,7 +1146,7 @@ const PulseGeneratorExplorer: React.FC = () => {
                           y1="0"
                           x2={playheadPercent}
                           y2="100%"
-                          stroke="hsl(var(--p))"
+                          className="stroke-secondary"
                           strokeWidth="2"
                           opacity="0.8"
                           vectorEffect="non-scaling-stroke"
@@ -1157,8 +1156,7 @@ const PulseGeneratorExplorer: React.FC = () => {
                             cx={arpPlayhead.x}
                             cy={arpPlayhead.y}
                             r={4.5}
-                            fill="hsl(var(--p))"
-                            stroke="hsl(var(--bc))"
+                            className="fill-secondary stroke-secondary"
                             strokeWidth="1"
                             opacity="0.9"
                           />
@@ -1179,7 +1177,7 @@ const PulseGeneratorExplorer: React.FC = () => {
 
           <div className="card bg-base-200/70">
             <div className="card-body space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Phrase Modulation (T-1)</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wide mt-0">Phrase Modulation</h3>
               <div className="relative overflow-hidden rounded-xl border border-base-300 bg-base-100/60 p-3">
                 {rangeAmount === 0 ? (
                   <div className="flex h-24 items-center justify-center text-xs text-base-content/60">
@@ -1230,7 +1228,7 @@ const PulseGeneratorExplorer: React.FC = () => {
                           y1="0"
                           x2={playheadPercent}
                           y2="100%"
-                          stroke="hsl(var(--p))"
+                          className="stroke-secondary"
                           strokeWidth="2"
                           opacity="0.8"
                           vectorEffect="non-scaling-stroke"
@@ -1240,8 +1238,7 @@ const PulseGeneratorExplorer: React.FC = () => {
                             cx={phrasePlayhead.x}
                             cy={phrasePlayhead.y}
                             r={4.5}
-                            fill="hsl(var(--p))"
-                            stroke="hsl(var(--bc))"
+                            className="fill-secondary stroke-secondary"
                             strokeWidth="1"
                             opacity="0.9"
                           />
