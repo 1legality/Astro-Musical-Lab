@@ -209,22 +209,82 @@ const GROOVE_TEMPLATES = [
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const formatNoteLabel = (note: number) => `${NOTE_LABELS[note % 12]}${Math.floor(note / 12) - 1}`;
 
+// Bjorklund's algorithm for Euclidean rhythm generation
+const generateEuclideanPattern = (steps: number, pulses: number, rotation: number): PulsePattern => {
+  const safePulses = Math.min(pulses, steps);
+  if (safePulses === 0) {
+    return { label: `E(0,${steps})`, res: 4, len: steps, steps: [] };
+  }
+  if (safePulses === steps) {
+    return {
+      label: `E(${steps},${steps})`,
+      res: 4,
+      len: steps,
+      steps: Array.from({ length: steps }, (_, i) => ({
+        position: i,
+        velocityScale: i === 0 ? 1.0 : 0.8,
+        accent: i === 0,
+      })),
+    };
+  }
+
+  // Bjorklund algorithm
+  let pattern: number[][] = [];
+  for (let i = 0; i < steps; i++) {
+    pattern.push(i < safePulses ? [1] : [0]);
+  }
+
+  let divisor = steps - safePulses;
+  let remainder = safePulses;
+
+  while (remainder > 1) {
+    const numMoves = Math.min(divisor, remainder);
+    for (let i = 0; i < numMoves; i++) {
+      const tail = pattern.pop()!;
+      pattern[i] = pattern[i].concat(tail);
+    }
+    const newLen = pattern.length;
+    const prevRemainder = remainder;
+    remainder = divisor > prevRemainder ? divisor - prevRemainder : prevRemainder - divisor;
+    divisor = Math.min(newLen - remainder, remainder === 0 ? newLen : remainder);
+    if (divisor <= 0) break;
+  }
+
+  const flat = pattern.flat();
+
+  // Apply rotation
+  const rotated = [...flat.slice(rotation % steps), ...flat.slice(0, rotation % steps)];
+
+  const patternSteps: PatternStep[] = rotated
+    .map((val, idx) => (val === 1 ? { position: idx, velocityScale: idx === 0 ? 1.0 : 0.8, accent: idx === 0 } : null))
+    .filter((step): step is PatternStep => step !== null);
+
+  return {
+    label: `E(${safePulses},${steps})${rotation > 0 ? `+${rotation}` : ''}`,
+    res: 4,
+    len: steps,
+    steps: patternSteps,
+  };
+};
+
 const PulseGeneratorExplorer: React.FC = () => {
+  // Rhythm mode: 0 = Pattern, 1 = Euclidean
+  const [rhythmMode, setRhythmMode] = useState(0);
   const [patternIndex, setPatternIndex] = useState(0);
   const [harmonyMode, setHarmonyMode] = useState(0); // 0 = Mono (Arp), 1 = Poly (Chord)
   const [humanize, setHumanize] = useState(0);
   const [swing, setSwing] = useState(0);
-  const [octaveShift, setOctaveShift] = useState(0);
   const [divisionIndex, setDivisionIndex] = useState(2);
-  const [pickup, setPickup] = useState(true);
   const [bpm, setBpm] = useState(120);
   const [inputOctave, setInputOctave] = useState(4);
   const [heldNotes, setHeldNotes] = useState<HeldNote[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
-  // T-1 Parameters
-  const [patternLength, setPatternLength] = useState<number | null>(null);
+  // Euclidean parameters
+  const [euclideanSteps, setEuclideanSteps] = useState(16);
+  const [euclideanPulses, setEuclideanPulses] = useState(4);
+  const [euclideanRotation, setEuclideanRotation] = useState(0);
   const [repeatCount, setRepeatCount] = useState(0);
   const [repeatTimeIndex, setRepeatTimeIndex] = useState(2);
   const [repeatPace, setRepeatPace] = useState(0);
@@ -247,7 +307,12 @@ const PulseGeneratorExplorer: React.FC = () => {
   const prevHeldCountRef = useRef(0);
   const stepRef = useRef(0);
 
-  const pattern = PATTERNS[patternIndex] ?? PATTERNS[0];
+  // Generate pattern based on mode
+  const euclideanPattern = useMemo(
+    () => generateEuclideanPattern(euclideanSteps, euclideanPulses, euclideanRotation),
+    [euclideanSteps, euclideanPulses, euclideanRotation]
+  );
+  const pattern = rhythmMode === 1 ? euclideanPattern : (PATTERNS[patternIndex] ?? PATTERNS[0]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -325,7 +390,6 @@ const PulseGeneratorExplorer: React.FC = () => {
     heldNotes,
     humanize,
     isPlaying,
-    octaveShift,
     pattern,
     divisionIndex,
     swing,
@@ -346,17 +410,8 @@ const PulseGeneratorExplorer: React.FC = () => {
     if (heldNotes.length === 0) {
       arpIndexRef.current = 1;
     }
-  }, [heldNotes]);
-
-  useEffect(() => {
-    const wasEmpty = prevHeldCountRef.current === 0;
-    if (pickup && wasEmpty && heldNotes.length > 0) {
-      const styledNotes = applyVoicingStyle(heldNotes, voicingStyle);
-      const notes = getNotesToPlay(styledNotes, harmonyMode, arpIndexRef);
-      playPulse(notes, 1.0, true, 0, pattern.len);
-    }
     prevHeldCountRef.current = heldNotes.length;
-  }, [harmonyMode, heldNotes, pattern.len, pickup, voicingStyle]);
+  }, [heldNotes]);
 
   const playPulse = (
     notesToPlay: HeldNote[],
@@ -397,7 +452,7 @@ const PulseGeneratorExplorer: React.FC = () => {
     );
 
     const shifted = notesToPlay.map(noteData =>
-      clamp(noteData.note + (octaveShift * 12) + phraseModulation, 0, 127)
+      clamp(noteData.note + phraseModulation, 0, 127)
     );
 
     // Play main pulse
@@ -422,7 +477,7 @@ const PulseGeneratorExplorer: React.FC = () => {
       repeats.forEach(repeat => {
         const timeoutId = window.setTimeout(() => {
           if (synthRef.current) {
-            const repeatShifted = clamp(repeat.note + (octaveShift * 12) + phraseModulation, 0, 127);
+            const repeatShifted = clamp(repeat.note + phraseModulation, 0, 127);
             synthRef.current.playChord([repeatShifted], durationSeconds * 0.7, [repeat.velocity]);
           }
         }, repeat.delayMs);
@@ -535,9 +590,9 @@ const PulseGeneratorExplorer: React.FC = () => {
 
     return Array.from({ length: pattern.len }, () => {
       const notes = getNotesToPlay(styledNotes, harmonyMode, localIndexRef);
-      return notes.map(noteData => clamp(noteData.note + (octaveShift * 12), 0, 127));
+      return notes.map(noteData => clamp(noteData.note, 0, 127));
     });
-  }, [harmonyMode, heldNotes, octaveShift, pattern.len, voicingStyle]);
+  }, [harmonyMode, heldNotes, pattern.len, voicingStyle]);
 
   const arpNoteScale = useMemo(() => {
     if (arpPreview.length === 0) return null;
@@ -680,20 +735,92 @@ const PulseGeneratorExplorer: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-4">
-                <label className="form-control w-48">
-                  <span className="label-text text-xs uppercase tracking-wide">Pattern</span>
-                  <select
-                    className="select select-bordered select-sm mt-1"
-                    value={patternIndex}
-                    onChange={event => setPatternIndex(Number(event.target.value))}
-                  >
-                    {PATTERNS.map((entry, index) => (
-                      <option key={entry.label} value={index}>
-                        {entry.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {/* Mode Toggle */}
+                <div className="form-control">
+                  <span className="label-text text-xs uppercase tracking-wide">Mode</span>
+                  <div className="tabs tabs-boxed mt-1 bg-base-300">
+                    <button
+                      type="button"
+                      className={`tab tab-sm ${rhythmMode === 0 ? 'tab-active' : ''}`}
+                      onClick={() => setRhythmMode(0)}
+                    >
+                      Pattern
+                    </button>
+                    <button
+                      type="button"
+                      className={`tab tab-sm ${rhythmMode === 1 ? 'tab-active' : ''}`}
+                      onClick={() => setRhythmMode(1)}
+                    >
+                      Euclidean
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pattern Mode Controls */}
+                {rhythmMode === 0 && (
+                  <label className="form-control w-48">
+                    <span className="label-text text-xs uppercase tracking-wide">Pattern</span>
+                    <select
+                      className="select select-bordered select-sm mt-1"
+                      value={patternIndex}
+                      onChange={event => setPatternIndex(Number(event.target.value))}
+                    >
+                      {PATTERNS.map((entry, index) => (
+                        <option key={entry.label} value={index}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {/* Euclidean Mode Controls */}
+                {rhythmMode === 1 && (
+                  <>
+                    <label className="form-control w-32">
+                      <span className="label-text text-xs uppercase tracking-wide">Steps</span>
+                      <input
+                        type="range"
+                        min={2}
+                        max={32}
+                        value={euclideanSteps}
+                        className="range range-xs mt-2"
+                        onChange={event => {
+                          const newSteps = Number(event.target.value);
+                          setEuclideanSteps(newSteps);
+                          setEuclideanPulses(prev => Math.min(prev, newSteps));
+                          setEuclideanRotation(prev => Math.min(prev, newSteps - 1));
+                        }}
+                      />
+                      <span className="text-xs font-mono text-right text-base-content/70">{euclideanSteps}</span>
+                    </label>
+                    <label className="form-control w-32">
+                      <span className="label-text text-xs uppercase tracking-wide">Pulses</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={euclideanSteps}
+                        value={euclideanPulses}
+                        className="range range-xs mt-2"
+                        onChange={event => setEuclideanPulses(Number(event.target.value))}
+                      />
+                      <span className="text-xs font-mono text-right text-base-content/70">{euclideanPulses}</span>
+                    </label>
+                    <label className="form-control w-32">
+                      <span className="label-text text-xs uppercase tracking-wide">Rotation</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={euclideanSteps - 1}
+                        value={euclideanRotation}
+                        className="range range-xs mt-2"
+                        onChange={event => setEuclideanRotation(Number(event.target.value))}
+                      />
+                      <span className="text-xs font-mono text-right text-base-content/70">{euclideanRotation}</span>
+                    </label>
+                  </>
+                )}
+
                 <label className="form-control w-40">
                   <span className="label-text text-xs uppercase tracking-wide">Division</span>
                   <select
@@ -719,20 +846,6 @@ const PulseGeneratorExplorer: React.FC = () => {
                     <option value={1}>Poly (Chord)</option>
                   </select>
                 </label>
-                <label className="form-control w-48">
-                  <span className="label-text text-xs uppercase tracking-wide">Length</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={32}
-                    value={patternLength ?? pattern.len}
-                    className="range range-xs mt-2"
-                    onChange={event => setPatternLength(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">
-                    {patternLength ?? pattern.len} steps
-                  </span>
-                </label>
                 <label className="form-control w-32">
                   <span className="label-text text-xs uppercase tracking-wide">Humanize</span>
                   <input
@@ -756,31 +869,6 @@ const PulseGeneratorExplorer: React.FC = () => {
                     onChange={event => setSwing(Number(event.target.value))}
                   />
                   <span className="text-xs font-mono text-right text-base-content/70">{swing}%</span>
-                </label>
-                <label className="form-control w-28">
-                  <span className="label-text text-xs uppercase tracking-wide">Octave</span>
-                  <input
-                    type="range"
-                    min={-2}
-                    max={2}
-                    value={octaveShift}
-                    className="range range-xs mt-2"
-                    onChange={event => setOctaveShift(Number(event.target.value))}
-                  />
-                  <span className="text-xs font-mono text-right text-base-content/70">
-                    {octaveShift >= 0 ? `+${octaveShift}` : octaveShift}
-                  </span>
-                </label>
-                <label className="form-control w-28">
-                  <span className="label-text text-xs uppercase tracking-wide">Pickup</span>
-                  <select
-                    className="select select-bordered select-sm mt-1"
-                    value={pickup ? 'on' : 'off'}
-                    onChange={event => setPickup(event.target.value === 'on')}
-                  >
-                    <option value="on">On</option>
-                    <option value="off">Off</option>
-                  </select>
                 </label>
               </div>
             </div>
